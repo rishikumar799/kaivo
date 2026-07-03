@@ -1,0 +1,6 @@
+{
+  "name": "KAIVO",
+  "description": "KAIVO is a premium fashion e-commerce brand for oversized streetwear tees. It features high-quality catalogs, search/filter systems, product details, a cart, an automated WhatsApp ordering flow, and a comprehensive admin management dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
