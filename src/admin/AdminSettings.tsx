@@ -3,17 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useShop } from "../contexts/ShopContext";
-import { Save, Sparkles, Settings, MessageSquare, ShieldAlert } from "lucide-react";
+import { Save, Sparkles, Settings, MessageSquare, ShieldAlert, Upload } from "lucide-react";
+import { uploadImageToStorage } from "../lib/firebaseService";
 
 export default function AdminSettings() {
-  const { db, updateDatabase } = useShop();
+  const { db, updateSettings } = useShop();
 
   const [notif, setNotif] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [siteName, setSiteName] = useState(db?.settings.siteName || "KAIVO");
   const [logoText, setLogoText] = useState(db?.settings.logoText || "KAIVO");
+  const [logoType, setLogoType] = useState<"text" | "image">(db?.settings.logoType || "text");
+  const [logoImage, setLogoImage] = useState(db?.settings.logoImage || "");
+  const [logoHeight, setLogoHeight] = useState<number>(db?.settings.logoHeight || 32);
   const [whatsappNumber, setWhatsappNumber] = useState(db?.settings.whatsappNumber || "+919876543210");
   const [footerText, setFooterText] = useState(db?.settings.footerText || "");
   const [seoDescription, setSeoDescription] = useState(db?.settings.seoDescription || "");
@@ -23,9 +28,32 @@ export default function AdminSettings() {
   const [facebook, setFacebook] = useState(db?.settings.socialLinks.facebook || "");
   const [twitter, setTwitter] = useState(db?.settings.socialLinks.twitter || "");
 
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   if (!db) return null;
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file (PNG, JPG, WEBP, GIF).");
+      return;
+    }
+
+    setNotif("⏳ Uploading logo to Firebase Storage...");
+    try {
+      const downloadUrl = await uploadImageToStorage(file, `logo-${Date.now()}-${file.name}`);
+      setLogoImage(downloadUrl);
+      setNotif("🎉 Logo uploaded successfully!");
+      setTimeout(() => setNotif(""), 3000);
+    } catch (error) {
+      alert("Failed to upload logo: " + (error instanceof Error ? error.message : String(error)));
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!siteName.trim() || !whatsappNumber.trim()) {
@@ -33,27 +61,35 @@ export default function AdminSettings() {
       return;
     }
 
-    const updatedSettings = {
-      ...db.settings,
-      siteName,
-      logoText,
-      whatsappNumber,
-      footerText,
-      seoDescription,
-      socialLinks: {
-        instagram,
-        facebook,
-        twitter
-      }
-    };
+    setIsSaving(true);
+    setNotif("⏳ Committing brand configurations to Firestore...");
 
-    updateDatabase({
-      ...db,
-      settings: updatedSettings
-    });
+    try {
+      const updatedSettings = {
+        ...db.settings,
+        siteName,
+        logoText,
+        logoType,
+        logoImage,
+        logoHeight,
+        whatsappNumber,
+        footerText,
+        seoDescription,
+        socialLinks: {
+          instagram,
+          facebook,
+          twitter
+        }
+      };
 
-    setNotif("🎉 Global Brand Configurations saved successfully! Refreshing components...");
-    setTimeout(() => setNotif(""), 3000);
+      await updateSettings(updatedSettings);
+      setNotif("🎉 Global Brand Configurations saved successfully!");
+      setTimeout(() => setNotif(""), 3000);
+    } catch (err) {
+      alert("Failed to save settings: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -89,28 +125,124 @@ export default function AdminSettings() {
               <span>BRAND & WEBSITE IDENTITY</span>
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Website Name</label>
-                <input
-                  type="text"
-                  required
-                  value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  className="bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm font-mono uppercase font-black"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Header Logo Brand Text</label>
-                <input
-                  type="text"
-                  required
-                  value={logoText}
-                  onChange={(e) => setLogoText(e.target.value)}
-                  className="bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm font-mono uppercase font-black text-amber-500"
-                />
+            {/* Logo Style Selector */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Logo Style</label>
+              <div className="flex rounded overflow-hidden border border-zinc-800 text-xs font-mono max-w-xs">
+                {(["text", "image"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setLogoType(type)}
+                    className={`flex-1 py-2.5 px-4 font-bold uppercase transition-all cursor-pointer text-center ${
+                      logoType === type
+                        ? "bg-amber-500 text-black animate-pulse-once"
+                        : "bg-zinc-950 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {type === "text" ? "Text Logo" : "Image Logo"}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {logoType === "text" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-fade-in">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Website Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={siteName}
+                    onChange={(e) => setSiteName(e.target.value)}
+                    className="bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm font-mono uppercase font-black"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Header Logo Brand Text</label>
+                  <input
+                    type="text"
+                    required
+                    value={logoText}
+                    onChange={(e) => setLogoText(e.target.value)}
+                    className="bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm font-mono uppercase font-black text-amber-500"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6 animate-fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Website Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={siteName}
+                      onChange={(e) => setSiteName(e.target.value)}
+                      className="bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm font-mono uppercase font-black"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Logo Height (px)</label>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="range"
+                        min="16"
+                        max="80"
+                        value={logoHeight}
+                        onChange={(e) => setLogoHeight(parseInt(e.target.value))}
+                        className="flex-grow accent-amber-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-xs font-mono text-zinc-300 w-12 text-right">{logoHeight}px</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Logo Image URL</label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      value={logoImage}
+                      onChange={(e) => setLogoImage(e.target.value)}
+                      placeholder="e.g. https://example.com/logo.png"
+                      className="flex-grow bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm font-sans"
+                    />
+                    <input
+                      type="file"
+                      ref={logoInputRef}
+                      onChange={handleLogoUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="bg-zinc-900 border border-zinc-850 hover:border-amber-500 hover:text-white text-zinc-300 text-xs font-mono font-bold px-5 py-3.5 rounded-sm flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0 uppercase"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-amber-500" />
+                      <span>UPLOAD LOGO IMAGE</span>
+                    </button>
+                  </div>
+                </div>
+
+                {logoImage && (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Header Logo Preview</span>
+                    <div className="bg-black border border-zinc-900 rounded-sm p-6 flex items-center justify-center min-h-[100px]">
+                      <img
+                        src={logoImage}
+                        alt="Logo Preview"
+                        style={{ height: `${logoHeight}px` }}
+                        className="object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Global Search SEO Description</label>
@@ -204,10 +336,11 @@ export default function AdminSettings() {
           {/* SAVE BUTTON */}
           <button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-xl cursor-pointer"
+            disabled={isSaving}
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-xl cursor-pointer"
           >
             <Save className="w-4.5 h-4.5 text-black" />
-            <span>SAVE BRAND SETTINGS</span>
+            <span>{isSaving ? "SAVING CHANGES..." : "SAVE BRAND SETTINGS"}</span>
           </button>
 
         </div>

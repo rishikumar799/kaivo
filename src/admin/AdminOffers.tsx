@@ -8,9 +8,10 @@ import { useShop } from "../contexts/ShopContext";
 import { Save, Sparkles, Megaphone } from "lucide-react";
 
 export default function AdminOffers() {
-  const { db, updateDatabase } = useShop();
+  const { db, updateOffers } = useShop();
 
   const [notif, setNotif] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Retrieve initial state values directly from db.offers
   const [text, setText] = useState(db?.offers.text || "");
@@ -18,7 +19,7 @@ export default function AdminOffers() {
 
   if (!db) return null;
 
-  const handleSaveOffers = (e: React.FormEvent) => {
+  const handleSaveOffers = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!text.trim()) {
@@ -26,19 +27,24 @@ export default function AdminOffers() {
       return;
     }
 
-    const updatedOffers = {
-      ...db.offers,
-      text,
-      enabled
-    };
+    setIsSaving(true);
+    setNotif("⏳ Synchronizing promotional notice with Firestore...");
 
-    updateDatabase({
-      ...db,
-      offers: updatedOffers
-    });
+    try {
+      const updatedOffers = {
+        ...db.offers,
+        text,
+        enabled
+      };
 
-    setNotif("🎉 Top promo announcement bar updated successfully!");
-    setTimeout(() => setNotif(""), 3000);
+      await updateOffers(updatedOffers);
+      setNotif("🎉 Top promo announcement bar updated successfully!");
+      setTimeout(() => setNotif(""), 3000);
+    } catch (err) {
+      alert("Failed to save announcement bar: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -105,10 +111,11 @@ export default function AdminOffers() {
           <div className="border-t border-zinc-900 pt-5 mt-4 flex justify-end">
             <button
               type="submit"
-              className="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs tracking-widest px-6 py-3.5 rounded-sm font-mono flex items-center gap-1.5 uppercase transition-all shadow-lg cursor-pointer"
+              disabled={isSaving}
+              className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold text-xs tracking-widest px-6 py-3.5 rounded-sm font-mono flex items-center gap-1.5 uppercase transition-all shadow-lg cursor-pointer"
             >
               <Save className="w-4 h-4 text-black" />
-              <span>SAVE CHANGES</span>
+              <span>{isSaving ? "SAVING..." : "SAVE CHANGES"}</span>
             </button>
           </div>
 

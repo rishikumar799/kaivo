@@ -19,22 +19,32 @@ import {
   FileText,
   BadgeAlert,
   Save,
-  Grid
+  Grid,
+  Copy,
+  Eye,
+  EyeOff,
+  Flame,
+  ArrowUpDown,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 
 export default function AdminProducts() {
-  const { db, updateDatabase } = useShop();
+  const { db, updateDatabase, addProduct, updateProduct, deleteProduct } = useShop();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL triggers
   const editQuery = searchParams.get("edit");
   const actionQuery = searchParams.get("action");
 
-  // Filter products list search state
+  // Advanced search and filtering states
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all"); // 'all', 'featured', 'newArrival', 'bestSeller', 'enabled', 'disabled'
+  const [sortBy, setSortBy] = useState("id-desc"); // 'name-asc', 'name-desc', 'price-asc', 'price-desc', 'stock-asc', 'stock-desc'
 
   // Product Form states
-  const [formId, setFormId] = useState<number | null>(null);
+  const [formId, setFormId] = useState<string | number | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -43,6 +53,8 @@ export default function AdminProducts() {
   const [category, setCategory] = useState("oversized");
   const [featured, setFeatured] = useState(false);
   const [newArrival, setNewArrival] = useState(false);
+  const [bestSeller, setBestSeller] = useState(false);
+  const [disabled, setDisabled] = useState(false);
   const [sizes, setSizes] = useState<string[]>(["M", "L", "XL"]);
   const [colors, setColors] = useState<Color[]>([
     { name: "Black", hex: "#000000" }
@@ -56,6 +68,7 @@ export default function AdminProducts() {
   const [tempColorHex, setTempColorHex] = useState("#000000");
 
   const [notif, setNotif] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!db) return null;
 
@@ -81,10 +94,10 @@ export default function AdminProducts() {
     setSlug(generated);
   };
 
-  // Synchronize Edit data if editing URL is matched
+  // Synchronize Edit data if editing URL is matched (FIXED: handles string product IDs correctly)
   useEffect(() => {
     if (editQuery && db) {
-      const match = db.products.find((p) => p.id === Number(editQuery));
+      const match = db.products.find((p) => String(p.id) === String(editQuery));
       if (match) {
         setFormId(match.id);
         setName(match.name);
@@ -95,6 +108,8 @@ export default function AdminProducts() {
         setCategory(match.category);
         setFeatured(match.featured);
         setNewArrival(match.newArrival);
+        setBestSeller(match.bestSeller || false);
+        setDisabled(match.disabled || false);
         setSizes(match.sizes);
         setColors(match.colors);
         setImages(match.images);
@@ -111,6 +126,8 @@ export default function AdminProducts() {
       setCategory("oversized");
       setFeatured(false);
       setNewArrival(true);
+      setBestSeller(false);
+      setDisabled(false);
       setSizes(["M", "L", "XL"]);
       setColors([{ name: "Black", hex: "#000000" }]);
       setImages([]);
@@ -118,17 +135,64 @@ export default function AdminProducts() {
     }
   }, [editQuery, actionQuery, db]);
 
-  // List filter calculations
+  // Enhanced search, filtering, and sorting calculations
   const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return db.products;
-    const q = searchTerm.toLowerCase();
-    return db.products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q)
-    );
-  }, [db.products, searchTerm]);
+    let result = [...db.products];
+
+    // 1. Text Search Filter
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.slug.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Category Filter
+    if (filterCategory !== "all") {
+      result = result.filter((p) => p.category === filterCategory);
+    }
+
+    // 3. Status Filter
+    if (filterStatus !== "all") {
+      if (filterStatus === "featured") {
+        result = result.filter((p) => p.featured);
+      } else if (filterStatus === "newArrival") {
+        result = result.filter((p) => p.newArrival);
+      } else if (filterStatus === "bestSeller") {
+        result = result.filter((p) => p.bestSeller);
+      } else if (filterStatus === "disabled") {
+        result = result.filter((p) => p.disabled);
+      } else if (filterStatus === "enabled") {
+        result = result.filter((p) => !p.disabled);
+      }
+    }
+
+    // 4. Sorting logic
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "name-asc":
+          return a.name.localeCompare(b.name);
+        case "name-desc":
+          return b.name.localeCompare(a.name);
+        case "price-asc":
+          return a.price - b.price;
+        case "price-desc":
+          return b.price - a.price;
+        case "stock-asc":
+          return a.stock - b.stock;
+        case "stock-desc":
+          return b.stock - a.stock;
+        case "id-desc":
+        default:
+          return String(b.id).localeCompare(String(a.id));
+      }
+    });
+
+    return result;
+  }, [db.products, searchTerm, filterCategory, filterStatus, sortBy]);
 
   // Color actions helper
   const addColorItem = () => {
@@ -164,8 +228,8 @@ export default function AdminProducts() {
     }
   };
 
-  // Save changes
-  const handleSaveProduct = (e: React.FormEvent) => {
+  // Save product changes directly and asynchronously to Firestore
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (images.length === 0) {
@@ -183,74 +247,118 @@ export default function AdminProducts() {
       return;
     }
 
-    let updatedProducts = [...db.products];
+    setIsSaving(true);
+    setNotif(formId !== null ? "⏳ Saving product edits to Firestore..." : "⏳ Creating new product on Firestore...");
 
-    if (formId !== null) {
-      // EDIT MODE
-      updatedProducts = updatedProducts.map((p) => {
-        if (p.id === formId) {
-          return {
-            ...p,
-            name,
-            slug,
-            description,
-            price: Number(price),
-            discount: Number(discount),
-            category,
-            featured,
-            newArrival,
-            sizes,
-            colors,
-            images,
-            stock: Number(stock)
-          };
-        }
-        return p;
-      });
-      setNotif("🎉 Product updated successfully!");
-    } else {
-      // ADD NEW MODE
-      const newId = db.products.reduce((max, p) => Math.max(max, p.id), 0) + 1;
-      const newProd: Product = {
-        id: newId,
-        name,
-        slug,
-        description,
-        price: Number(price),
-        discount: Number(discount),
-        category,
-        featured,
-        newArrival,
-        sizes,
-        colors,
-        images,
-        stock: Number(stock)
-      };
-      updatedProducts.push(newProd);
-      setNotif("🚀 New product created successfully!");
+    try {
+      if (formId !== null) {
+        // EDIT MODE
+        const updatedProd: Product = {
+          id: formId,
+          name,
+          slug,
+          description,
+          price: Number(price),
+          discount: Number(discount),
+          category,
+          featured,
+          newArrival,
+          bestSeller,
+          disabled,
+          sizes,
+          colors,
+          images,
+          stock: Number(stock)
+        };
+        await updateProduct(updatedProd);
+        setNotif("🎉 Product saved and synchronized successfully!");
+      } else {
+        // ADD NEW MODE
+        const newId = `p-${Date.now()}`;
+        const newProd: Product = {
+          id: newId,
+          name,
+          slug,
+          description,
+          price: Number(price),
+          discount: Number(discount),
+          category,
+          featured,
+          newArrival,
+          bestSeller,
+          disabled,
+          sizes,
+          colors,
+          images,
+          stock: Number(stock)
+        };
+        await addProduct(newProd);
+        setNotif("🚀 New product created and saved successfully!");
+      }
+
+      setTimeout(() => {
+        setNotif("");
+        setSearchParams({}); // Close form view
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      alert("Firestore Error: Failed to save product. " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
     }
-
-    updateDatabase({
-      ...db,
-      products: updatedProducts
-    });
-
-    setTimeout(() => {
-      setNotif("");
-      setSearchParams({}); // Close form view
-    }, 1500);
   };
 
-  // Delete product action
-  const handleDeleteProduct = (id: number, prodName: string) => {
+  // Delete product action asynchronously
+  const handleDeleteProduct = async (id: string | number, prodName: string) => {
     if (window.confirm(`Are you sure you want to delete "${prodName}" from your catalog?`)) {
-      const remaining = db.products.filter((p) => p.id !== id);
-      updateDatabase({
-        ...db,
-        products: remaining
-      });
-      setNotif("🗑️ Product deleted successfully.");
+      setNotif(`⏳ Deleting "${prodName}"...`);
+      try {
+        await deleteProduct(String(id));
+        setNotif("🗑️ Product deleted and synced successfully.");
+        setTimeout(() => setNotif(""), 3000);
+      } catch (err) {
+        alert("Failed to delete product: " + (err instanceof Error ? err.message : String(err)));
+        setNotif("");
+      }
+    }
+  };
+
+  // Duplicate product helper
+  const handleDuplicateProduct = async (original: Product) => {
+    const dupeId = `p-${Date.now()}`;
+    const dupeProd: Product = {
+      ...original,
+      id: dupeId,
+      name: `Copy of ${original.name}`,
+      slug: `${original.slug}-copy-${Date.now().toString().slice(-4)}`,
+      featured: false,
+      newArrival: true
+    };
+    
+    setNotif(`⏳ Duplicating "${original.name}"...`);
+    try {
+      await addProduct(dupeProd);
+      setNotif("✨ Product duplicated successfully!");
       setTimeout(() => setNotif(""), 3000);
+    } catch (err) {
+      alert("Failed to duplicate product: " + (err instanceof Error ? err.message : String(err)));
+      setNotif("");
+    }
+  };
+
+  // Quick feature togglers (instant catalog updates without entering form mode!)
+  const handleToggleProductFeature = async (product: Product, field: 'featured' | 'newArrival' | 'bestSeller' | 'disabled') => {
+    const updated = {
+      ...product,
+      [field]: !product[field]
+    };
+    
+    try {
+      await updateProduct(updated);
+      setNotif(`⚡ Updated status for "${product.name}"`);
+      setTimeout(() => setNotif(""), 2000);
+    } catch (err) {
+      alert("Failed to update status: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -407,7 +515,7 @@ export default function AdminProducts() {
             </div>
 
             {/* Status indicators */}
-            <div className="flex gap-8 border-t border-zinc-900 pt-6">
+            <div className="flex flex-wrap gap-6 border-t border-zinc-900 pt-6">
               
               <label className="flex items-center gap-3 text-xs text-zinc-400 hover:text-white cursor-pointer select-none">
                 <input
@@ -431,7 +539,33 @@ export default function AdminProducts() {
                 />
                 <div className="flex flex-col">
                   <span className="font-bold uppercase tracking-wider text-[10px]">New Arrival</span>
-                  <span className="text-[9px] text-zinc-600 font-sans">Mark as fresh drop drop tag</span>
+                  <span className="text-[9px] text-zinc-600 font-sans">Mark as fresh drop tag</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 text-xs text-zinc-400 hover:text-white cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={bestSeller}
+                  onChange={(e) => setBestSeller(e.target.checked)}
+                  className="accent-amber-500 w-4.5 h-4.5 rounded border-zinc-800 bg-zinc-900"
+                />
+                <div className="flex flex-col">
+                  <span className="font-bold uppercase tracking-wider text-[10px]">Best Seller</span>
+                  <span className="text-[9px] text-zinc-600 font-sans">Highlight as popular product</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 text-xs text-zinc-400 hover:text-white cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={disabled}
+                  onChange={(e) => setDisabled(e.target.checked)}
+                  className="accent-amber-500 w-4.5 h-4.5 rounded border-zinc-800 bg-zinc-900"
+                />
+                <div className="flex flex-col">
+                  <span className="font-bold uppercase tracking-wider text-[10px]">Disabled (Hidden)</span>
+                  <span className="text-[9px] text-zinc-600 font-sans">Hide product from the catalog</span>
                 </div>
               </label>
 
@@ -601,21 +735,65 @@ export default function AdminProducts() {
         /* INDEX PRODUCTS LIST VIEW */
         <div className="bg-zinc-950 border border-zinc-900 rounded-sm p-6">
           
-          {/* List Toolbar search bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-zinc-900">
-            <div className="relative flex-grow max-w-md">
+          {/* List Toolbar search and filtering bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-6 border-b border-zinc-900">
+            <div className="relative flex-grow max-w-md w-full">
               <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search catalog by name, slug, or category..."
-                className="bg-black border border-zinc-800 text-xs pl-9 pr-4 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm w-full"
+                className="bg-black border border-zinc-800 text-xs pl-9 pr-4 py-3 text-white focus:outline-none focus:border-amber-500 rounded-sm w-full font-mono"
               />
             </div>
-            <span className="text-xs font-mono text-zinc-500 self-end sm:self-auto">
-              {filteredProducts.length} PRODUCTS INDEXED
-            </span>
+            
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              {/* Category filter */}
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="bg-black border border-zinc-800 text-xs px-3 py-2.5 rounded-sm text-zinc-300 focus:border-amber-500 focus:outline-none font-mono"
+              >
+                <option value="all">All Categories</option>
+                {db.categories.map((cat) => (
+                  <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                ))}
+              </select>
+
+              {/* Status filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="bg-black border border-zinc-800 text-xs px-3 py-2.5 rounded-sm text-zinc-300 focus:border-amber-500 focus:outline-none font-mono"
+              >
+                <option value="all">All Statuses</option>
+                <option value="featured">Featured</option>
+                <option value="newArrival">New Arrivals</option>
+                <option value="bestSeller">Best Sellers</option>
+                <option value="enabled">Active / Visible</option>
+                <option value="disabled">Disabled / Hidden</option>
+              </select>
+
+              {/* Sorting */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-black border border-zinc-800 text-xs px-3 py-2.5 rounded-sm text-zinc-300 focus:border-amber-500 focus:outline-none font-mono"
+              >
+                <option value="id-desc">ID (Newest First)</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="price-asc">Price (Low to High)</option>
+                <option value="price-desc">Price (High to Low)</option>
+                <option value="stock-asc">Stock (Low to High)</option>
+                <option value="stock-desc">Stock (High to Low)</option>
+              </select>
+
+              <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-850 px-3 py-2 rounded-sm shrink-0">
+                {filteredProducts.length} PRODUCTS
+              </span>
+            </div>
           </div>
 
           {/* Catalog Listing Table */}
@@ -633,13 +811,13 @@ export default function AdminProducts() {
                     <th className="py-3 px-4">CATEGORY</th>
                     <th className="py-3 px-4">PRICE</th>
                     <th className="py-3 px-4">STOCK</th>
-                    <th className="py-3 px-4">STATUS</th>
+                    <th className="py-3 px-4">STATUS BADGES (CLICK TO TOGGLE)</th>
                     <th className="py-3 px-4 text-right">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-900">
                   {filteredProducts.map((p) => (
-                    <tr key={p.id} className="hover:bg-zinc-900/20 transition-all">
+                    <tr key={p.id} className={`hover:bg-zinc-900/20 transition-all ${p.disabled ? "opacity-50" : ""}`}>
                       
                       {/* Image + Name column */}
                       <td className="py-4 px-4 flex items-center gap-3">
@@ -676,24 +854,75 @@ export default function AdminProducts() {
                         </span>
                       </td>
 
-                      {/* Badges/Status */}
-                      <td className="py-4 px-4 flex flex-wrap gap-1.5 items-center">
-                        {p.featured && (
-                          <span className="bg-amber-500/10 border border-amber-500/20 text-[8px] text-amber-500 font-bold font-mono tracking-wider px-2 py-0.5 rounded-xs uppercase">
+                      {/* Interactive Badges/Status */}
+                      <td className="py-4 px-4">
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {/* Featured toggle */}
+                          <button
+                            onClick={() => handleToggleProductFeature(p, 'featured')}
+                            className={`text-[8px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-xs uppercase border transition-all cursor-pointer ${
+                              p.featured 
+                                ? "bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20" 
+                                : "bg-zinc-900/40 border-zinc-850 text-zinc-600 hover:text-zinc-400"
+                            }`}
+                            title="Toggle featured display on homepage"
+                          >
                             FEAT
-                          </span>
-                        )}
-                        {p.newArrival && (
-                          <span className="bg-white/10 border border-white/20 text-[8px] text-white font-bold font-mono tracking-wider px-2 py-0.5 rounded-xs uppercase">
+                          </button>
+
+                          {/* New Arrival toggle */}
+                          <button
+                            onClick={() => handleToggleProductFeature(p, 'newArrival')}
+                            className={`text-[8px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-xs uppercase border transition-all cursor-pointer ${
+                              p.newArrival 
+                                ? "bg-white/10 border-white/30 text-white hover:bg-white/20" 
+                                : "bg-zinc-900/40 border-zinc-850 text-zinc-600 hover:text-zinc-400"
+                            }`}
+                            title="Toggle New Arrival badge"
+                          >
                             NEW
-                          </span>
-                        )}
+                          </button>
+
+                          {/* Best Seller toggle */}
+                          <button
+                            onClick={() => handleToggleProductFeature(p, 'bestSeller')}
+                            className={`text-[8px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-xs uppercase border transition-all cursor-pointer ${
+                              p.bestSeller 
+                                ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20" 
+                                : "bg-zinc-900/40 border-zinc-850 text-zinc-600 hover:text-zinc-400"
+                            }`}
+                            title="Toggle Best Seller badge"
+                          >
+                            BEST
+                          </button>
+
+                          {/* Disabled/Enabled status toggle */}
+                          <button
+                            onClick={() => handleToggleProductFeature(p, 'disabled')}
+                            className={`text-[8px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-xs uppercase border transition-all cursor-pointer ${
+                              p.disabled 
+                                ? "bg-red-950/20 border-red-900/30 text-red-500 hover:bg-red-900/20" 
+                                : "bg-emerald-950/20 border-emerald-900/30 text-emerald-500 hover:bg-emerald-900/20"
+                            }`}
+                            title="Click to Toggle Active vs Disabled (Hidden)"
+                          >
+                            {p.disabled ? "HIDDEN" : "ACTIVE"}
+                          </button>
+                        </div>
                       </td>
 
-                      {/* Edit Delete triggers */}
+                      {/* Action triggers */}
                       <td className="py-4 px-4 text-right">
-                        <div className="inline-flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1.5">
                           
+                          <button
+                            onClick={() => handleDuplicateProduct(p)}
+                            className="p-2 border border-zinc-900 hover:border-zinc-700 bg-black hover:text-amber-500 rounded text-zinc-400 transition-colors cursor-pointer"
+                            title="Duplicate Product"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+
                           <button
                             onClick={() => setSearchParams({ edit: String(p.id) })}
                             className="p-2 border border-zinc-900 hover:border-amber-500 bg-black hover:text-amber-500 rounded text-zinc-400 transition-colors cursor-pointer"

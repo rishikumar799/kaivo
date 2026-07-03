@@ -21,7 +21,8 @@ import {
   X,
   Sliders,
   FolderOpen,
-  AppWindow
+  AppWindow,
+  Sparkles
 } from "lucide-react";
 
 export default function AdminLayout() {
@@ -55,6 +56,7 @@ export default function AdminLayout() {
     { label: "Categories", path: "/admin/categories", icon: <Tag className="w-4 h-4" /> },
     { label: "Hero Banners", path: "/admin/banners", icon: <Image className="w-4 h-4" /> },
     { label: "Announcements", path: "/admin/offers", icon: <Megaphone className="w-4 h-4" /> },
+    { label: "Popup Manager", path: "/admin/popup", icon: <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" /> },
     { label: "Testimonials", path: "/admin/testimonials", icon: <MessageSquare className="w-4 h-4" /> },
     { label: "About Page", path: "/admin/about", icon: <FileText className="w-4 h-4" /> },
     { label: "Contact Info", path: "/admin/contact", icon: <Mail className="w-4 h-4" /> },
@@ -103,13 +105,6 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex flex-col gap-3 mt-10 border-t border-zinc-900 pt-6">
-            <Link
-              to="/"
-              className="flex items-center justify-center gap-2 text-xs font-mono tracking-wider text-zinc-500 hover:text-amber-500 uppercase py-2.5"
-            >
-              <Globe className="w-4 h-4" />
-              <span>LIVE WEBSITE</span>
-            </Link>
             <button
               onClick={handleLogout}
               className="w-full bg-red-900/20 hover:bg-red-900 border border-red-900/50 text-red-400 hover:text-white py-3 rounded-sm font-mono text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -157,15 +152,6 @@ export default function AdminLayout() {
 
         {/* Footer of Sidebar */}
         <div className="flex flex-col gap-4 border-t border-zinc-900 pt-6">
-          <Link
-            to="/"
-            target="_blank"
-            className="flex items-center justify-center gap-2 border border-zinc-900 hover:border-zinc-700 bg-black text-xs font-mono tracking-wider text-zinc-400 hover:text-white uppercase py-3 rounded-sm transition-all"
-          >
-            <Globe className="w-4 h-4 text-amber-500" />
-            <span>LIVE WEBSITE</span>
-          </Link>
-
           <button
             onClick={handleLogout}
             className="w-full bg-red-950/20 hover:bg-red-900 border border-red-900/40 text-red-400 hover:text-white py-3 rounded-sm font-mono text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer"

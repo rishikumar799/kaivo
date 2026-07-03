@@ -4,7 +4,29 @@
  */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Database, Product, Category, Banner, OfferBar, Testimonial, AboutContent, ContactContent, Settings, CartItem, Color, MenuItem, Page, MediaItem, GlobalSEO } from "../types";
+import { Database, Product, Category, Banner, OfferBar, Testimonial, AboutContent, ContactContent, Settings, CartItem, Color, MenuItem, Page, MediaItem, GlobalSEO, PopupSettings } from "../types";
+import { 
+  initializeDatabaseWithFallback,
+  saveSettings,
+  saveOffers,
+  saveAbout,
+  saveContact,
+  saveMenus,
+  saveGlobalSEO,
+  savePopup,
+  saveBanner,
+  removeBanner,
+  saveCategory,
+  removeCategory,
+  saveProduct,
+  removeProduct,
+  saveTestimonial,
+  removeTestimonial,
+  savePage,
+  removePage,
+  saveMediaItem,
+  removeMediaItem
+} from "../lib/firebaseService";
 
 interface ShopContextType {
   db: Database | null;
@@ -17,32 +39,33 @@ interface ShopContextType {
   getCartTotal: () => number;
   getCartItemsCount: () => number;
   
-  // Admin functions
-  updateSettings: (settings: Settings) => void;
-  updateOffers: (offers: OfferBar) => void;
-  addBanner: (banner: Banner) => void;
-  updateBanner: (banner: Banner) => void;
-  deleteBanner: (id: string) => void;
-  addCategory: (category: Category) => void;
-  updateCategory: (category: Category) => void;
-  deleteCategory: (id: string) => void;
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
-  addTestimonial: (testimonial: Testimonial) => void;
-  updateTestimonial: (testimonial: Testimonial) => void;
-  deleteTestimonial: (id: string) => void;
-  updateAbout: (about: AboutContent) => void;
-  updateContact: (contact: ContactContent) => void;
-  updateMenus: (menus: MenuItem[]) => void;
-  updatePages: (pages: Page[]) => void;
-  updateMedia: (media: MediaItem[]) => void;
-  updateGlobalSEO: (seo: GlobalSEO) => void;
-  updateDatabase: (db: Database) => void;
-  resetDatabase: () => void;
+  // Admin functions (asynchronous for Firebase integration)
+  updateSettings: (settings: Settings) => Promise<void>;
+  updateOffers: (offers: OfferBar) => Promise<void>;
+  addBanner: (banner: Banner) => Promise<void>;
+  updateBanner: (banner: Banner) => Promise<void>;
+  deleteBanner: (id: string) => Promise<void>;
+  addCategory: (category: Category) => Promise<void>;
+  updateCategory: (category: Category) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  addTestimonial: (testimonial: Testimonial) => Promise<void>;
+  updateTestimonial: (testimonial: Testimonial) => Promise<void>;
+  deleteTestimonial: (id: string) => Promise<void>;
+  updateAbout: (about: AboutContent) => Promise<void>;
+  updateContact: (contact: ContactContent) => Promise<void>;
+  updateMenus: (menus: MenuItem[]) => Promise<void>;
+  updatePages: (pages: Page[]) => Promise<void>;
+  updateMedia: (media: MediaItem[]) => Promise<void>;
+  updateGlobalSEO: (seo: GlobalSEO) => Promise<void>;
+  updatePopup: (popup: PopupSettings) => Promise<void>;
+  updateDatabase: (db: Database) => Promise<void>;
+  resetDatabase: () => Promise<void>;
   exportData: () => string;
-  importData: (jsonData: string) => boolean;
-  resetData: () => void;
+  importData: (jsonData: string) => Promise<boolean>;
+  resetData: () => Promise<void>;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -486,6 +509,16 @@ const fallbackDb: Database = {
     "keywords": "streetwear, oversized, minimal, premium cotton",
     "ogImage": "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=1200",
     "favicon": "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?q=80&w=32"
+  },
+  "popup": {
+    "enabled": true,
+    "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600",
+    "title": "GET 10% OFF YOUR FIRST ORDER",
+    "content": "Subscribe to our exclusive drops newsletter and get 10% off your purchase. Wear your confidence today.",
+    "buttonText": "JOIN DROPS CLUB",
+    "buttonLink": "/shop",
+    "delay": 3,
+    "frequency": "once"
   }
 };
 
@@ -507,37 +540,36 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Instant bootstrap with localStorage cache for responsive feel
     if (localDb) {
       try {
         setDb(JSON.parse(localDb));
         setLoading(false);
       } catch (e) {
         console.error("Error parsing database from localStorage", e);
-        loadDefaultDb();
       }
-    } else {
-      loadDefaultDb();
     }
-  }, []);
 
-  const loadDefaultDb = async () => {
-    try {
-      const response = await fetch("/data/db.json");
-      if (response.ok) {
-        const data = await response.json();
-        setDb(data);
-        localStorage.setItem("kaivo_db", JSON.stringify(data));
-      } else {
-        throw new Error("Failed to fetch default db.json");
+    // Sync with Firestore in the background
+    const syncFirestore = async () => {
+      try {
+        const initialSeed = localDb ? JSON.parse(localDb) : fallbackDb;
+        const firestoreDb = await initializeDatabaseWithFallback(initialSeed);
+        setDb(firestoreDb);
+        localStorage.setItem("kaivo_db", JSON.stringify(firestoreDb));
+      } catch (e) {
+        console.warn("Firestore offline/inaccessible, using local backup:", e);
+        if (!localDb) {
+          setDb(fallbackDb);
+          localStorage.setItem("kaivo_db", JSON.stringify(fallbackDb));
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.warn("Could not fetch db.json from server, loading fallback static db", e);
-      setDb(fallbackDb);
-      localStorage.setItem("kaivo_db", JSON.stringify(fallbackDb));
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    syncFirestore();
+  }, []);
 
   // Helper to save state DB to localStorage
   const saveDb = (updatedDb: Database) => {
@@ -623,167 +655,211 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   };
 
   // Admin Mutations
-  const updateSettings = (settings: Settings) => {
+  const updateSettings = async (settings: Settings) => {
     if (!db) return;
     const updated = { ...db, settings };
     saveDb(updated);
+    await saveSettings(settings);
   };
 
-  const updateOffers = (offers: OfferBar) => {
+  const updateOffers = async (offers: OfferBar) => {
     if (!db) return;
     const updated = { ...db, offers };
     saveDb(updated);
+    await saveOffers(offers);
   };
 
-  const addBanner = (banner: Banner) => {
+  const addBanner = async (banner: Banner) => {
     if (!db) return;
     const updated = { ...db, banners: [...db.banners, banner] };
     saveDb(updated);
+    await saveBanner(banner);
   };
 
-  const updateBanner = (banner: Banner) => {
+  const updateBanner = async (banner: Banner) => {
     if (!db) return;
     const updated = {
       ...db,
       banners: db.banners.map((b) => (b.id === banner.id ? banner : b)),
     };
     saveDb(updated);
+    await saveBanner(banner);
   };
 
-  const deleteBanner = (id: string) => {
+  const deleteBanner = async (id: string) => {
     if (!db) return;
     const updated = {
       ...db,
       banners: db.banners.filter((b) => b.id !== id),
     };
     saveDb(updated);
+    await removeBanner(id);
   };
 
-  const addCategory = (category: Category) => {
+  const addCategory = async (category: Category) => {
     if (!db) return;
     const updated = { ...db, categories: [...db.categories, category] };
     saveDb(updated);
+    await saveCategory(category);
   };
 
-  const updateCategory = (category: Category) => {
+  const updateCategory = async (category: Category) => {
     if (!db) return;
     const updated = {
       ...db,
       categories: db.categories.map((c) => (c.id === category.id ? category : c)),
     };
     saveDb(updated);
+    await saveCategory(category);
   };
 
-  const deleteCategory = (id: string) => {
+  const deleteCategory = async (id: string) => {
     if (!db) return;
     const updated = {
       ...db,
       categories: db.categories.filter((c) => c.id !== id),
     };
     saveDb(updated);
+    await removeCategory(id);
   };
 
-  const addProduct = (product: Product) => {
+  const addProduct = async (product: Product) => {
     if (!db) return;
     const updated = { ...db, products: [...db.products, product] };
     saveDb(updated);
+    await saveProduct(product);
   };
 
-  const updateProduct = (product: Product) => {
+  const updateProduct = async (product: Product) => {
     if (!db) return;
     const updated = {
       ...db,
       products: db.products.map((p) => (p.id === product.id ? product : p)),
     };
     saveDb(updated);
+    await saveProduct(product);
   };
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string) => {
     if (!db) return;
     const updated = {
       ...db,
       products: db.products.filter((p) => p.id !== id),
     };
     saveDb(updated);
+    await removeProduct(id);
   };
 
-  const addTestimonial = (testimonial: Testimonial) => {
+  const addTestimonial = async (testimonial: Testimonial) => {
     if (!db) return;
     const updated = { ...db, testimonials: [...db.testimonials, testimonial] };
     saveDb(updated);
+    await saveTestimonial(testimonial);
   };
 
-  const updateTestimonial = (testimonial: Testimonial) => {
+  const updateTestimonial = async (testimonial: Testimonial) => {
     if (!db) return;
     const updated = {
       ...db,
       testimonials: db.testimonials.map((t) => (t.id === testimonial.id ? testimonial : t)),
     };
     saveDb(updated);
+    await saveTestimonial(testimonial);
   };
 
-  const deleteTestimonial = (id: string) => {
+  const deleteTestimonial = async (id: string) => {
     if (!db) return;
     const updated = {
       ...db,
       testimonials: db.testimonials.filter((t) => t.id !== id),
     };
     saveDb(updated);
+    await removeTestimonial(id);
   };
 
-  const updateAbout = (about: AboutContent) => {
+  const updateAbout = async (about: AboutContent) => {
     if (!db) return;
     const updated = { ...db, about };
     saveDb(updated);
+    await saveAbout(about);
   };
 
-  const updateContact = (contact: ContactContent) => {
+  const updateContact = async (contact: ContactContent) => {
     if (!db) return;
     const updated = { ...db, contact };
     saveDb(updated);
+    await saveContact(contact);
   };
 
-  const updateMenus = (menus: MenuItem[]) => {
+  const updateMenus = async (menus: MenuItem[]) => {
     if (!db) return;
     const updated = { ...db, menus };
     saveDb(updated);
+    await saveMenus(menus);
   };
 
-  const updatePages = (pages: Page[]) => {
+  const updatePages = async (pages: Page[]) => {
     if (!db) return;
     const updated = { ...db, pages };
     saveDb(updated);
+    await Promise.all(pages.map(page => savePage(page)));
   };
 
-  const updateMedia = (media: MediaItem[]) => {
+  const updateMedia = async (media: MediaItem[]) => {
     if (!db) return;
     const updated = { ...db, media };
     saveDb(updated);
+    await Promise.all(media.map(item => saveMediaItem(item)));
   };
 
-  const updateGlobalSEO = (seo: GlobalSEO) => {
+  const updateGlobalSEO = async (seo: GlobalSEO) => {
     if (!db) return;
     const updated = { ...db, seo };
     saveDb(updated);
+    await saveGlobalSEO(seo);
   };
 
-  const updateDatabase = (updatedDb: Database) => {
+  const updatePopup = async (popup: PopupSettings) => {
+    if (!db) return;
+    const updated = { ...db, popup };
+    saveDb(updated);
+    await savePopup(popup);
+  };
+
+  const updateDatabase = async (updatedDb: Database) => {
     saveDb(updatedDb);
+    await Promise.all([
+      saveSettings(updatedDb.settings),
+      saveOffers(updatedDb.offers),
+      saveAbout(updatedDb.about),
+      saveContact(updatedDb.contact),
+      saveMenus(updatedDb.menus),
+      updatedDb.seo ? saveGlobalSEO(updatedDb.seo) : Promise.resolve(),
+      updatedDb.popup ? savePopup(updatedDb.popup) : Promise.resolve()
+    ]);
+    await Promise.all([
+      ...updatedDb.banners.map(b => saveBanner(b)),
+      ...updatedDb.categories.map(c => saveCategory(c)),
+      ...updatedDb.products.map(p => saveProduct(p)),
+      ...updatedDb.testimonials.map(t => saveTestimonial(t)),
+      ...(updatedDb.pages || []).map(page => savePage(page)),
+      ...(updatedDb.media || []).map(m => saveMediaItem(m))
+    ]);
   };
 
-  const resetDatabase = () => {
-    resetData();
+  const resetDatabase = async () => {
+    await resetData();
   };
 
   const exportData = () => {
     return JSON.stringify(db || fallbackDb, null, 2);
   };
 
-  const importData = (jsonData: string) => {
+  const importData = async (jsonData: string): Promise<boolean> => {
     try {
       const parsed = JSON.parse(jsonData);
       if (parsed.settings && parsed.products && parsed.categories) {
-        saveDb(parsed);
+        await updateDatabase(parsed);
         return true;
       }
     } catch (e) {
@@ -792,10 +868,30 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const resetData = () => {
+  const resetData = async () => {
     localStorage.removeItem("kaivo_db");
     setDb(fallbackDb);
     localStorage.setItem("kaivo_db", JSON.stringify(fallbackDb));
+    
+    // Reset Firestore too!
+    await Promise.all([
+      saveSettings(fallbackDb.settings),
+      saveOffers(fallbackDb.offers),
+      saveAbout(fallbackDb.about),
+      saveContact(fallbackDb.contact),
+      saveMenus(fallbackDb.menus),
+      fallbackDb.seo ? saveGlobalSEO(fallbackDb.seo) : Promise.resolve(),
+      fallbackDb.popup ? savePopup(fallbackDb.popup) : Promise.resolve()
+    ]);
+
+    await Promise.all([
+      ...fallbackDb.banners.map(b => saveBanner(b)),
+      ...fallbackDb.categories.map(c => saveCategory(c)),
+      ...fallbackDb.products.map(p => saveProduct(p)),
+      ...fallbackDb.testimonials.map(t => saveTestimonial(t)),
+      ...(fallbackDb.pages || []).map(page => savePage(page)),
+      ...(fallbackDb.media || []).map(m => saveMediaItem(m))
+    ]);
   };
 
   return (
@@ -830,6 +926,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         updatePages,
         updateMedia,
         updateGlobalSEO,
+        updatePopup,
         updateDatabase,
         resetDatabase,
         exportData,

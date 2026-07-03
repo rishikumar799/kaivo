@@ -11,6 +11,7 @@ import { Save, Check, Globe, HelpCircle, ArrowUpRight } from "lucide-react";
 export default function AdminSEO() {
   const { db, updateGlobalSEO } = useShop();
   const [notif, setNotif] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // SEO Form State
   const [siteTitle, setSiteTitle] = useState("");
@@ -32,20 +33,28 @@ export default function AdminSEO() {
 
   if (!db) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    setNotif("⏳ Syncing Global SEO metadata with Firestore...");
 
-    const seo: GlobalSEO = {
-      siteTitle,
-      siteDescription,
-      keywords,
-      ogImage,
-      favicon
-    };
+    try {
+      const seo: GlobalSEO = {
+        siteTitle,
+        siteDescription,
+        keywords,
+        ogImage,
+        favicon
+      };
 
-    updateGlobalSEO(seo);
-    setNotif("Global SEO settings successfully synced!");
-    setTimeout(() => setNotif(""), 3000);
+      await updateGlobalSEO(seo);
+      setNotif("🎉 Global SEO settings successfully synced!");
+      setTimeout(() => setNotif(""), 3000);
+    } catch (err) {
+      alert("Failed to save SEO settings: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -151,10 +160,11 @@ export default function AdminSEO() {
 
           <button
             type="submit"
-            className="w-full bg-[#C9A063] hover:bg-[#B38E55] text-black font-bold text-xs tracking-widest py-4 uppercase rounded-sm font-mono flex items-center justify-center gap-2 mt-4 cursor-pointer"
+            disabled={isSaving}
+            className="w-full bg-[#C9A063] hover:bg-[#B38E55] disabled:opacity-40 text-black font-bold text-xs tracking-widest py-4 uppercase rounded-sm font-mono flex items-center justify-center gap-2 mt-4 cursor-pointer"
           >
             <Save className="w-4 h-4 text-black" />
-            <span>SAVE METADATA</span>
+            <span>{isSaving ? "SAVING..." : "SAVE METADATA"}</span>
           </button>
         </form>
 

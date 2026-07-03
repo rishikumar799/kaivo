@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
+import PromoPopup from "../components/PromoPopup";
 import { 
   ShoppingBag, 
   User, 
@@ -80,9 +81,60 @@ export default function RootLayout({ children }: RootLayoutProps) {
     { id: "c", name: "CONTACT", path: "/contact", type: "normal" as const, enabled: true },
   ];
 
-  const activeMenus = db.menus && db.menus.length > 0
-    ? [...db.menus].filter(m => m.enabled).sort((a, b) => (a.order || 0) - (b.order || 0))
-    : navLinks;
+  // Resilient menu builder that guarantees core pages are never removed,
+  // while supporting both custom labels/settings and extra custom-added pages.
+  const activeMenus = (() => {
+    if (!db.menus || db.menus.length === 0) {
+      return navLinks;
+    }
+
+    const customEnabledMenus = db.menus.filter(m => m.enabled);
+    const merged: { id: string; name: string; path: string; type: any; enabled: boolean; children?: any[] }[] = [];
+
+    // Ensure all 6 core links are present in the navbar (using custom settings if defined)
+    navLinks.forEach(defaultLink => {
+      const customMatch = customEnabledMenus.find(m => m.path === defaultLink.path);
+      if (customMatch) {
+        merged.push({
+          id: customMatch.id,
+          name: customMatch.name,
+          path: customMatch.path,
+          type: customMatch.type as any,
+          enabled: true,
+          children: customMatch.children ? customMatch.children.map(c => ({
+            id: c.id,
+            name: c.name,
+            path: c.path,
+            type: c.type as any,
+            enabled: c.enabled
+          })) : undefined
+        });
+      } else {
+        merged.push(defaultLink);
+      }
+    });
+
+    // Append any extra pages/menus that are not part of the standard core set (e.g. "testing" page)
+    const defaultPaths = navLinks.map(l => l.path);
+    const extraCustom = customEnabledMenus
+      .filter(m => !defaultPaths.includes(m.path))
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        path: m.path,
+        type: m.type as any,
+        enabled: true,
+        children: m.children ? m.children.map(c => ({
+          id: c.id,
+          name: c.name,
+          path: c.path,
+          type: c.type as any,
+          enabled: c.enabled
+        })) : undefined
+      }));
+
+    return [...merged, ...extraCustom];
+  })();
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200 font-sans">
@@ -111,9 +163,21 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <Link 
             to="/" 
             id="nav-logo" 
-            className="text-2xl sm:text-3xl font-black tracking-[0.25em] text-white hover:text-[#C9A063] transition-colors flex items-center"
+            className="hover:text-[#C9A063] transition-colors flex items-center"
           >
-            {settings.logoText}
+            {settings.logoType === "image" && settings.logoImage ? (
+              <img
+                src={settings.logoImage}
+                alt={settings.logoText || "Logo"}
+                style={{ height: `${settings.logoHeight || 32}px` }}
+                className="object-contain"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <span className="text-2xl sm:text-3xl font-black tracking-[0.25em] text-white">
+                {settings.logoText}
+              </span>
+            )}
           </Link>
 
           {/* Desktop Links */}
@@ -247,7 +311,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
             >
               <div>
                 <div className="flex items-center justify-between mb-12">
-                  <span className="text-xl font-bold tracking-[0.2em]">{settings.logoText}</span>
+                  {settings.logoType === "image" && settings.logoImage ? (
+                    <img
+                      src={settings.logoImage}
+                      alt={settings.logoText || "Logo"}
+                      style={{ height: `${Math.min(settings.logoHeight || 32, 40)}px` }}
+                      className="object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="text-xl font-bold tracking-[0.2em]">{settings.logoText}</span>
+                  )}
                   <button 
                     onClick={() => setMobileMenuOpen(false)}
                     className="p-2 text-zinc-400 hover:text-white border border-zinc-800 rounded"
@@ -417,6 +491,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
       {/* 5. MAIN CONTENT WRAPPER */}
       <main className="flex-grow">
+        <PromoPopup />
         {children || <Outlet />}
       </main>
 
@@ -428,9 +503,19 @@ export default function RootLayout({ children }: RootLayoutProps) {
             
             {/* Col 1: Brand details */}
             <div className="flex flex-col gap-4">
-              <span className="text-2xl font-black tracking-[0.2em] text-white">
-                {settings.logoText}
-              </span>
+              {settings.logoType === "image" && settings.logoImage ? (
+                <img
+                  src={settings.logoImage}
+                  alt={settings.logoText || "Logo"}
+                  style={{ height: `${Math.min(settings.logoHeight || 32, 48)}px` }}
+                  className="object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-2xl font-black tracking-[0.2em] text-white">
+                  {settings.logoText}
+                </span>
+              )}
               <p className="text-xs tracking-widest text-[#C9A063]/80 font-mono uppercase">
                 {settings.tagline}
               </p>

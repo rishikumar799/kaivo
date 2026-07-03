@@ -18,7 +18,8 @@ import {
   Layers, 
   ExternalLink, 
   Play, 
-  Save 
+  Save,
+  RefreshCw
 } from "lucide-react";
 
 export default function AdminMenus() {
@@ -212,6 +213,30 @@ export default function AdminMenus() {
           <h1 className="text-2xl sm:text-3xl font-black tracking-widest uppercase">
             MENU BUILDER
           </h1>
+        </div>
+        <div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (window.confirm("Are you sure you want to restore the default navigation menu? This will replace your current menu structure with the original 6 core pages.")) {
+                const defaults: MenuItem[] = [
+                  { id: "menu-1", name: "HOME", path: "/", type: "normal", enabled: true, order: 0 },
+                  { id: "menu-2", name: "SHOP", path: "/shop", type: "normal", enabled: true, order: 1 },
+                  { id: "menu-3", name: "NEW ARRIVALS", path: "/new-arrivals", type: "normal", enabled: true, order: 2 },
+                  { id: "menu-4", name: "OVERSIZED COLLECTION", path: "/oversized", type: "normal", enabled: true, order: 3 },
+                  { id: "menu-5", name: "ABOUT US", path: "/about", type: "normal", enabled: true, order: 4 },
+                  { id: "menu-6", name: "CONTACT", path: "/contact", type: "normal", enabled: true, order: 5 }
+                ];
+                await updateMenus(defaults);
+                setNotif("🎉 Default navigation menu successfully restored in database!");
+                setTimeout(() => setNotif(""), 3500);
+              }
+            }}
+            className="border border-amber-500/30 hover:border-amber-500 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black font-mono font-bold text-xs px-5 py-3 rounded-sm flex items-center justify-center gap-2 cursor-pointer uppercase transition-all"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>RESTORE DEFAULT MENUS</span>
+          </button>
         </div>
       </div>
 

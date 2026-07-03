@@ -22,6 +22,8 @@ export interface Product {
   colors: Color[];
   images: string[];
   stock: number;
+  bestSeller?: boolean;
+  disabled?: boolean;
 }
 
 export interface Category {
@@ -121,6 +123,9 @@ export interface Settings {
     youtube: string;
   };
   footerContent: string;
+  logoType?: "text" | "image";
+  logoImage?: string;
+  logoHeight?: number;
 }
 
 export interface MenuItem {
@@ -194,6 +199,17 @@ export interface GlobalSEO {
   favicon: string;
 }
 
+export interface PopupSettings {
+  enabled: boolean;
+  image: string;
+  title: string;
+  content: string;
+  buttonText: string;
+  buttonLink: string;
+  delay: number; // in seconds
+  frequency: "always" | "once";
+}
+
 export interface Database {
   settings: Settings;
   offers: OfferBar;
@@ -208,6 +224,7 @@ export interface Database {
   pages?: Page[];
   media?: MediaItem[];
   seo?: GlobalSEO;
+  popup?: PopupSettings;
 }
 
 export interface CartItem {

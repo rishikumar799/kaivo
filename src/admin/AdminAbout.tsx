@@ -8,9 +8,10 @@ import { useShop } from "../contexts/ShopContext";
 import { Save, Sparkles, FileText } from "lucide-react";
 
 export default function AdminAbout() {
-  const { db, updateDatabase } = useShop();
+  const { db, updateAbout } = useShop();
 
   const [notif, setNotif] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Subtitle/Title
   const [subtitle, setSubtitle] = useState(db?.about.subtitle || "");
@@ -32,32 +33,36 @@ export default function AdminAbout() {
 
   if (!db) return null;
 
-  const handleSaveAboutPage = (e: React.FormEvent) => {
+  const handleSaveAboutPage = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    setNotif("⏳ Committing Story Manifesto changes to Firestore...");
 
-    const updatedAbout = {
-      ...db.about,
-      title,
-      subtitle,
-      storyTitle,
-      story,
-      storyImage,
-      midSectionImage,
-      features,
-      craftedToLast: {
-        title: craftedTitle,
-        description: craftedDesc,
-        items: craftedItems
-      }
-    };
+    try {
+      const updatedAbout = {
+        ...db.about,
+        title,
+        subtitle,
+        storyTitle,
+        story,
+        storyImage,
+        midSectionImage,
+        features,
+        craftedToLast: {
+          title: craftedTitle,
+          description: craftedDesc,
+          items: craftedItems
+        }
+      };
 
-    updateDatabase({
-      ...db,
-      about: updatedAbout
-    });
-
-    setNotif("🎉 About page content updated successfully!");
-    setTimeout(() => setNotif(""), 3000);
+      await updateAbout(updatedAbout);
+      setNotif("🎉 About page content updated successfully!");
+      setTimeout(() => setNotif(""), 3000);
+    } catch (err) {
+      alert("Failed to save About specifications: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleFeatureChange = (index: number, field: "title" | "description", val: string) => {
@@ -290,10 +295,11 @@ export default function AdminAbout() {
           {/* Core SAVE CTA */}
           <button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-xl cursor-pointer"
+            disabled={isSaving}
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-xl cursor-pointer"
           >
             <Save className="w-4.5 h-4.5 text-black" />
-            <span>SAVE ABOUT SPEC CHANGES</span>
+            <span>{isSaving ? "SAVING..." : "SAVE ABOUT SPEC CHANGES"}</span>
           </button>
 
         </div>

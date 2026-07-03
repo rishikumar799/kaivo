@@ -8,9 +8,10 @@ import { useShop } from "../contexts/ShopContext";
 import { Save, Sparkles, Mail } from "lucide-react";
 
 export default function AdminContact() {
-  const { db, updateDatabase } = useShop();
+  const { db, updateContact } = useShop();
 
   const [notif, setNotif] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [subtitle, setSubtitle] = useState(db?.contact.subtitle || "");
   const [title, setTitle] = useState(db?.contact.title || "");
@@ -29,32 +30,36 @@ export default function AdminContact() {
 
   if (!db) return null;
 
-  const handleSaveContactPage = (e: React.FormEvent) => {
+  const handleSaveContactPage = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    setNotif("⏳ Synchronizing contact coordinates with Firestore...");
 
-    const updatedContact = {
-      ...db.contact,
-      title,
-      subtitle,
-      description,
-      address,
-      email,
-      phone,
-      workingHours,
-      socialLinks: {
-        instagram,
-        facebook,
-        twitter
-      }
-    };
+    try {
+      const updatedContact = {
+        ...db.contact,
+        title,
+        subtitle,
+        description,
+        address,
+        email,
+        phone,
+        workingHours,
+        socialLinks: {
+          instagram,
+          facebook,
+          twitter
+        }
+      };
 
-    updateDatabase({
-      ...db,
-      contact: updatedContact
-    });
-
-    setNotif("🎉 Contact details and locator positions updated successfully!");
-    setTimeout(() => setNotif(""), 3000);
+      await updateContact(updatedContact);
+      setNotif("🎉 Contact details and locator positions updated successfully!");
+      setTimeout(() => setNotif(""), 3000);
+    } catch (err) {
+      alert("Failed to save contact specifications: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -227,10 +232,11 @@ export default function AdminContact() {
           {/* SAVE BUTTON */}
           <button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-xl cursor-pointer"
+            disabled={isSaving}
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-xl cursor-pointer"
           >
             <Save className="w-4.5 h-4.5 text-black" />
-            <span>SAVE COORDINATE METRICS</span>
+            <span>{isSaving ? "SAVING..." : "SAVE COORDINATE METRICS"}</span>
           </button>
 
         </div>

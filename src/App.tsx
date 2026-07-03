@@ -33,6 +33,7 @@ import AdminMenus from "./admin/AdminMenus";
 import AdminPages from "./admin/AdminPages";
 import AdminMedia from "./admin/AdminMedia";
 import AdminSEO from "./admin/AdminSEO";
+import AdminPopup from "./admin/AdminPopup";
 
 export default function App() {
   return (
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="categories" element={<AdminCategories />} />
             <Route path="banners" element={<AdminBanners />} />
             <Route path="offers" element={<AdminOffers />} />
+            <Route path="popup" element={<AdminPopup />} />
             <Route path="testimonials" element={<AdminTestimonials />} />
             <Route path="about" element={<AdminAbout />} />
             <Route path="contact" element={<AdminContact />} />
