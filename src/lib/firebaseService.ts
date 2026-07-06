@@ -506,8 +506,23 @@ export async function initializeDatabaseWithFallback(fallback: Database): Promis
  * Analytics and Click Tracking Helpers
  */
 export async function trackProductView(productId: string, productName: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  
+  // Track to localStorage immediately for bulletproof offline fallback and real-time response
   try {
-    const timestamp = new Date().toISOString();
+    const localViews = JSON.parse(localStorage.getItem("kaivo_local_views") || "[]");
+    localViews.push({
+      id: "local_v_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      productId,
+      productName,
+      timestamp
+    });
+    localStorage.setItem("kaivo_local_views", JSON.stringify(localViews.slice(-1000)));
+  } catch (e) {
+    console.warn("localStorage view tracking failed", e);
+  }
+
+  try {
     // 1. Add to product_views
     await addDoc(collection(db, "product_views"), {
       productId,
@@ -527,8 +542,25 @@ export async function trackProductView(productId: string, productName: string): 
 }
 
 export async function trackWhatsAppClick(productId: string, productName: string, pageUrl: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  
+  // Track to localStorage immediately for bulletproof offline fallback and real-time response
   try {
-    const timestamp = new Date().toISOString();
+    const localClicks = JSON.parse(localStorage.getItem("kaivo_local_clicks") || "[]");
+    localClicks.push({
+      id: "local_c_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      productId,
+      productName,
+      timestamp,
+      pageUrl,
+      eventType: "whatsapp_click"
+    });
+    localStorage.setItem("kaivo_local_clicks", JSON.stringify(localClicks.slice(-1000)));
+  } catch (e) {
+    console.warn("localStorage click tracking failed", e);
+  }
+
+  try {
     // 1. Add to whatsapp_clicks
     await addDoc(collection(db, "whatsapp_clicks"), {
       productId,
@@ -551,8 +583,22 @@ export async function trackWhatsAppClick(productId: string, productName: string,
 }
 
 export async function trackPageView(pageUrl: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  
+  // Also track page views to local storage
   try {
-    const timestamp = new Date().toISOString();
+    const localPageViews = JSON.parse(localStorage.getItem("kaivo_local_page_views") || "[]");
+    localPageViews.push({
+      id: "local_pv_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      pageUrl,
+      timestamp
+    });
+    localStorage.setItem("kaivo_local_page_views", JSON.stringify(localPageViews.slice(-1000)));
+  } catch (e) {
+    console.warn("localStorage page view tracking failed", e);
+  }
+
+  try {
     await addDoc(collection(db, "analytics"), {
       eventType: "page_view",
       pageUrl,
@@ -564,8 +610,21 @@ export async function trackPageView(pageUrl: string): Promise<void> {
 }
 
 export async function trackCategoryView(categoryName: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  
   try {
-    const timestamp = new Date().toISOString();
+    const localCatViews = JSON.parse(localStorage.getItem("kaivo_local_category_views") || "[]");
+    localCatViews.push({
+      id: "local_cv_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      categoryName,
+      timestamp
+    });
+    localStorage.setItem("kaivo_local_category_views", JSON.stringify(localCatViews.slice(-1000)));
+  } catch (e) {
+    console.warn("localStorage category view tracking failed", e);
+  }
+
+  try {
     await addDoc(collection(db, "analytics"), {
       eventType: "category_view",
       categoryName,

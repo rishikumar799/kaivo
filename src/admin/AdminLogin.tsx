@@ -37,7 +37,7 @@ export default function AdminLogin() {
       const cleanUser = username.trim().toLowerCase();
       const cleanEmail = allowedEmail.trim().toLowerCase();
       
-      if ((cleanUser === "admin" || cleanUser === cleanEmail) && password === "admin123") {
+      if ((cleanUser === "admin" || cleanUser === cleanEmail) && password === "adMin @123#*") {
         localStorage.setItem("kaivo_admin_auth", "true");
         navigate("/admin/dashboard", { replace: true });
       } else {
@@ -45,7 +45,7 @@ export default function AdminLogin() {
       }
     } catch (err) {
       const cleanUser = username.trim().toLowerCase();
-      if ((cleanUser === "admin" || cleanUser === "thekaivoofficial@gmail.com") && password === "admin123") {
+      if ((cleanUser === "admin" || cleanUser === "thekaivoofficial@gmail.com") && password === "adMin @123#*") {
         localStorage.setItem("kaivo_admin_auth", "true");
         navigate("/admin/dashboard", { replace: true });
       } else {
@@ -67,13 +67,6 @@ export default function AdminLogin() {
           <span className="text-[10px] font-mono tracking-[0.3em] text-amber-500 uppercase block mb-2">KAIVO STREETWEAR</span>
           <h1 className="text-3xl font-black tracking-widest uppercase">MANAGEMENT</h1>
           <div className="w-10 h-0.5 bg-amber-500 mx-auto mt-4" />
-        </div>
-
-        {/* Info Credentials Helper Box */}
-        <div className="mb-6 p-4 bg-zinc-900/40 border border-zinc-800/80 rounded text-[11px] font-sans leading-relaxed text-zinc-400">
-          🔑 <strong>Quick Testing Credentials:</strong><br />
-          Email: <span className="font-mono text-amber-500 select-all font-bold">thekaivoofficial@gmail.com</span><br />
-          Password: <span className="font-mono text-amber-500 select-all font-bold">admin123</span>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
