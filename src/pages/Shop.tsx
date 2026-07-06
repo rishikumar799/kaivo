@@ -8,6 +8,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
 import ProductCard from "../components/ProductCard";
+import { trackPageView, trackCategoryView } from "../lib/firebaseService";
 import { 
   Filter, 
   X, 
@@ -35,6 +36,20 @@ export default function Shop() {
   // Read query params from URL (search, category)
   const searchQuery = searchParams.get("search") || "";
   const categoryParam = searchParams.get("category") || "";
+
+  // Track page view
+  useEffect(() => {
+    trackPageView("/shop");
+  }, []);
+
+  // Track category view
+  useEffect(() => {
+    if (selectedCategories.length > 0) {
+      selectedCategories.forEach((cat) => {
+        trackCategoryView(cat);
+      });
+    }
+  }, [selectedCategories]);
 
   // Synchronize category selection if changed in URL
   useEffect(() => {

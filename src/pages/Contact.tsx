@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
+import { trackPageView } from "../lib/firebaseService";
 import { 
   MapPin, 
   Mail, 
@@ -22,6 +23,10 @@ import {
 
 export default function Contact() {
   const { db } = useShop();
+
+  useEffect(() => {
+    trackPageView("/contact");
+  }, []);
 
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");

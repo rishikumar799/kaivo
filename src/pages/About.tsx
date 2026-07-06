@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
+import { trackPageView } from "../lib/firebaseService";
 import { 
   ShieldCheck, 
   Layers, 
@@ -20,6 +22,10 @@ import {
 
 export default function About() {
   const { db } = useShop();
+
+  useEffect(() => {
+    trackPageView("/about");
+  }, []);
 
   if (!db) return null;
 

@@ -6,9 +6,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Heart, ShoppingCart, ArrowRight } from "lucide-react";
+import { Heart, ArrowRight, MessageSquare } from "lucide-react";
 import { Product } from "../types";
 import { useShop } from "../contexts/ShopContext";
+import { trackWhatsAppClick } from "../lib/firebaseService";
 
 interface ProductCardProps {
   product: Product;
@@ -16,11 +17,10 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart } = useShop();
+  const { db } = useShop();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]);
   const [selectedSize, setSelectedSize] = useState(product.sizes[0] || "M");
-  const [showNotification, setShowNotification] = useState(false);
 
   // Price calculations
   const hasDiscount = product.discount > 0;
@@ -28,11 +28,39 @@ export default function ProductCard({ product }: ProductCardProps) {
     ? product.price * (1 - product.discount / 100) 
     : product.price;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    addToCart(product, 1, selectedSize, selectedColor);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
+  const generateCardWhatsAppMessage = () => {
+    if (!db) return "#";
+    const formattedPrice = `₹${Math.round(discountPrice)}`;
+    const productUrl = `${window.location.origin}/product/${product.slug}`;
+    const text = `Hello KAIVO,
+
+I would like to order the following product.
+
+Product:
+${product.name}
+
+Price:
+${formattedPrice}
+
+Size:
+${selectedSize}
+
+Color:
+${selectedColor?.name || "Default"}
+
+Product URL:
+${productUrl}
+
+Customer Name:
+Not specified
+
+Please assist me with this order.
+
+Thank you.`;
+
+    const encodedText = encodeURIComponent(text);
+    const cleanNumber = db.settings.whatsappNumber.replace(/\D/g, ""); // strip + and non-digits for wa.me
+    return `https://wa.me/${cleanNumber}?text=${encodedText}`;
   };
 
   return (
@@ -160,7 +188,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
 
         {/* Price and Add Button */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-zinc-900/50">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-auto pt-3 border-t border-zinc-900/50">
           
           {/* Pricing Grid */}
           <div className="flex items-baseline gap-2">
@@ -174,31 +202,22 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
           </div>
 
-          {/* Quick-add bag trigger */}
-          <button
-            onClick={handleAddToCart}
-            className="p-2.5 bg-zinc-900 hover:bg-amber-500 hover:text-black text-amber-500 rounded-sm active:scale-95 transition-all cursor-pointer"
-            title="Add to Bag"
+          {/* Order on WhatsApp */}
+          <a
+            href={generateCardWhatsAppMessage()}
+            onClick={() => {
+              trackWhatsAppClick(String(product.id), product.name, window.location.origin + `/product/${product.slug}`);
+            }}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3.5 py-2 bg-[#25d366] hover:bg-[#20ba5a] text-black rounded-sm active:scale-95 transition-all flex items-center justify-center gap-1 font-mono text-[10px] font-bold tracking-wider cursor-pointer uppercase text-center"
+            title="Order on WhatsApp"
           >
-            <ShoppingCart className="w-4 h-4" />
-          </button>
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>ORDER NOW</span>
+          </a>
         </div>
       </div>
-
-      {/* Success Notification overlay */}
-      <AnimatePresence>
-        {showNotification && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            className="absolute inset-x-0 bottom-0 bg-amber-500 text-black py-2.5 px-3 text-center text-xs font-bold tracking-wider z-20 flex items-center justify-center gap-1.5"
-          >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            <span>ADDED TO CART ({selectedSize})</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );

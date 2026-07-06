@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, ShieldCheck, User } from "lucide-react";
+import { db } from "../lib/firebase";
+import { getDoc, doc } from "firebase/firestore";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -20,13 +22,35 @@ export default function AdminLogin() {
     }
   }, [navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "admin" && password === "admin123") {
-      localStorage.setItem("kaivo_admin_auth", "true");
-      navigate("/admin/dashboard", { replace: true });
-    } else {
-      setError("Incorrect username or password. Please try again.");
+    try {
+      const settingsSnap = await getDoc(doc(db, "settings/general"));
+      let allowedEmail = "thekaivoofficial@gmail.com";
+      if (settingsSnap.exists()) {
+        const data = settingsSnap.data();
+        if (data.email) {
+          allowedEmail = data.email;
+        }
+      }
+      
+      const cleanUser = username.trim().toLowerCase();
+      const cleanEmail = allowedEmail.trim().toLowerCase();
+      
+      if ((cleanUser === "admin" || cleanUser === cleanEmail) && password === "admin123") {
+        localStorage.setItem("kaivo_admin_auth", "true");
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        setError("Incorrect email/username or password. Please try again.");
+      }
+    } catch (err) {
+      const cleanUser = username.trim().toLowerCase();
+      if ((cleanUser === "admin" || cleanUser === "thekaivoofficial@gmail.com") && password === "admin123") {
+        localStorage.setItem("kaivo_admin_auth", "true");
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        setError("Incorrect email/username or password. Please try again.");
+      }
     }
   };
 
@@ -48,7 +72,7 @@ export default function AdminLogin() {
         {/* Info Credentials Helper Box */}
         <div className="mb-6 p-4 bg-zinc-900/40 border border-zinc-800/80 rounded text-[11px] font-sans leading-relaxed text-zinc-400">
           🔑 <strong>Quick Testing Credentials:</strong><br />
-          Username: <span className="font-mono text-amber-500 select-all font-bold">admin</span><br />
+          Email: <span className="font-mono text-amber-500 select-all font-bold">thekaivoofficial@gmail.com</span><br />
           Password: <span className="font-mono text-amber-500 select-all font-bold">admin123</span>
         </div>
 
@@ -59,18 +83,18 @@ export default function AdminLogin() {
             </div>
           )}
 
-          {/* Username Input */}
+          {/* Username/Email Input */}
           <div className="flex flex-col gap-2">
             <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase flex items-center gap-2">
               <User className="w-3.5 h-3.5 text-amber-500" />
-              <span>Username</span>
+              <span>Username or Email</span>
             </label>
             <input
               type="text"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder="Enter your username or email"
               className="bg-black border border-zinc-800 text-xs px-4 py-3.5 text-white focus:outline-none focus:border-amber-500 rounded-sm font-sans"
             />
           </div>

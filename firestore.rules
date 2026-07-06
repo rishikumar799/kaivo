@@ -57,6 +57,21 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    match /product_views/{id} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /whatsapp_clicks/{id} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /analytics/{id} {
+      allow read: if true;
+      allow write: if true;
+    }
     
     // Global default fallback
     match /{document=**} {

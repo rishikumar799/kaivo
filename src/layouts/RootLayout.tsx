@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
 import PromoPopup from "../components/PromoPopup";
 import { 
-  ShoppingBag, 
   User, 
   Search, 
   Menu, 
@@ -30,12 +29,13 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const { db, getCartItemsCount } = useShop();
+  const { db } = useShop();
   const navigate = useNavigate();
   const location = useLocation();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [subscribedMessage, setSubscribedMessage] = useState(false);
@@ -52,7 +52,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
   }
 
   const { settings, offers } = db;
-  const cartCount = getCartItemsCount();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,11 +232,119 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
           {/* Action Icons */}
           <div className="flex items-center gap-3 sm:gap-6">
-            {/* Search Trigger */}
+            {/* Desktop Search Option - Sleek & Modern with Instant Auto-Complete */}
+            <div className="relative hidden md:block">
+              <AnimatePresence mode="wait">
+                {!desktopSearchOpen ? (
+                  <motion.button
+                    key="search-trigger"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    onClick={() => setDesktopSearchOpen(true)}
+                    className="p-2 text-zinc-350 hover:text-[#C9A063] transition-colors cursor-pointer flex items-center justify-center"
+                    aria-label="Search"
+                  >
+                    <Search className="w-5 h-5 sm:w-6 h-6" />
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    key="search-input-field"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: "240px", opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="relative flex items-center bg-zinc-950 border border-zinc-900 focus-within:border-[#C9A063] rounded-sm py-1 px-2.5 transition-colors"
+                  >
+                    <form onSubmit={handleSearchSubmit} className="relative flex-grow flex items-center">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search premium apparel..."
+                        className="w-full bg-transparent text-xs py-1.5 focus:outline-none font-sans tracking-wide text-white placeholder-zinc-500 pr-6"
+                      />
+                      <button 
+                        type="submit"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-zinc-450 hover:text-[#C9A063] transition-colors cursor-pointer"
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                      </button>
+                    </form>
+                    <button 
+                      onClick={() => {
+                        setSearchQuery("");
+                        setDesktopSearchOpen(false);
+                      }}
+                      className="ml-1 text-zinc-500 hover:text-white p-1 transition-colors cursor-pointer shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Instant Auto-complete search result dropdown */}
+              {desktopSearchOpen && searchQuery.trim().length > 0 && (
+                <div className="absolute top-full right-0 mt-2 bg-[#080808] border border-zinc-900 rounded-sm w-80 max-h-96 overflow-y-auto shadow-2xl z-50 p-2">
+                  <div className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase px-2 py-1.5 border-b border-zinc-950 flex items-center justify-between">
+                    <span>SUGGESTED MATCHES</span>
+                    <button type="button" onClick={() => setSearchQuery("")} className="text-[9px] text-[#C9A063] hover:underline uppercase">Clear</button>
+                  </div>
+                  {(() => {
+                    const filtered = (db?.products || []).filter(p => 
+                      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      p.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (p.categoryName || "").toLowerCase().includes(searchQuery.toLowerCase())
+                    ).slice(0, 5);
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-xs text-zinc-500 p-4 text-center font-mono uppercase tracking-wider">
+                          No matches found
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex flex-col gap-1 mt-1.5">
+                        {filtered.map(p => (
+                          <Link
+                            key={p.id}
+                            to={`/product/${p.slug}`}
+                            onClick={() => {
+                              setSearchQuery("");
+                              setDesktopSearchOpen(false);
+                            }}
+                            className="flex items-center gap-3 p-2 hover:bg-zinc-900/60 rounded-sm transition-colors text-left group"
+                          >
+                            {p.images && p.images[0] ? (
+                              <img src={p.images[0]} alt={p.name} className="w-8 h-10 object-cover rounded-xs border border-zinc-900" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-8 h-10 bg-zinc-900 rounded-xs flex items-center justify-center text-[9px] text-zinc-500 font-mono">K</div>
+                            )}
+                            <div className="flex-grow min-w-0">
+                              <p className="text-xs font-semibold text-white group-hover:text-[#C9A063] transition-colors truncate">{p.name}</p>
+                              <p className="text-[10px] font-mono text-zinc-500 mt-0.5">{p.categoryName || "Premium Series"}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[10px] font-mono text-[#C9A063] font-bold">₹{p.price}</span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Search Trigger Icon */}
             <button 
               onClick={() => setSearchOpen(true)}
               id="action-search-btn"
-              className="p-2 text-zinc-350 hover:text-[#C9A063] transition-colors cursor-pointer"
+              className="md:hidden p-2 text-zinc-350 hover:text-[#C9A063] transition-colors cursor-pointer"
               aria-label="Search Products"
             >
               <Search className="w-5 h-5 sm:w-6.5 sm:h-6.5" />
@@ -251,28 +358,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
               aria-label="Admin panel"
             >
               <User className="w-5 h-5 sm:w-6.5 sm:h-6.5" />
-            </Link>
-
-            {/* Shopping Bag */}
-            <Link 
-              to="/cart"
-              id="action-cart-btn"
-              className="p-2 text-zinc-350 hover:text-[#C9A063] transition-colors relative flex items-center"
-              aria-label="Cart"
-            >
-              <ShoppingBag className="w-5 h-5 sm:w-6.5 sm:h-6.5" />
-              <AnimatePresence>
-                {cartCount > 0 && (
-                  <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-1 -right-1 bg-[#C9A063] text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center"
-                  >
-                    {cartCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
             </Link>
 
             {/* Mobile Menu Trigger */}
@@ -499,7 +584,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <footer className="bg-black border-t border-zinc-900 pt-16 pb-8 text-sm text-zinc-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
             
             {/* Col 1: Brand details */}
             <div className="flex flex-col gap-4">
@@ -619,42 +704,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   {db.contact.address}
                 </span>
               </div>
-            </div>
-
-            {/* Col 5: Newsletter */}
-            <div className="flex flex-col gap-4">
-              <h4 className="text-white text-xs font-bold uppercase tracking-widest mb-2">NEWSLETTER</h4>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Subscribe to get special offers, free giveaways and once-in-a-lifetime deals.
-              </p>
-              <form onSubmit={handleNewsletterSubmit} className="flex flex-row items-stretch gap-0 mt-2">
-                <input
-                  type="email"
-                  required
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="flex-grow bg-[#0c0c0c] border border-zinc-800 text-xs px-4 py-3 text-white placeholder-zinc-650 focus:outline-none focus:border-[#C9A063] transition-all rounded-l-xs"
-                />
-                <button
-                  type="submit"
-                  className="bg-[#C9A063] hover:bg-white text-black font-bold text-[10px] tracking-widest px-4 uppercase transition-all rounded-r-xs font-mono cursor-pointer shrink-0"
-                >
-                  SUBSCRIBE
-                </button>
-              </form>
-              <AnimatePresence>
-                {subscribedMessage && (
-                  <motion.p 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="text-[11px] text-[#C9A063] font-mono"
-                  >
-                    Successfully joined the movement!
-                  </motion.p>
-                )}
-              </AnimatePresence>
             </div>
 
           </div>

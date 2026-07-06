@@ -11,7 +11,8 @@ import {
   getDocs, 
   setDoc, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  addDoc
 } from "firebase/firestore";
 import { 
   ref, 
@@ -134,6 +135,17 @@ export async function deleteImageFromStorage(url: string): Promise<void> {
 export async function saveSettings(settings: Settings): Promise<void> {
   try {
     await setDoc(doc(db, GLOBAL_SETTINGS_PATH), settings);
+    try {
+      const genSnap = await getDoc(doc(db, "settings/general"));
+      const currentGen = genSnap.exists() ? genSnap.data() : {};
+      await setDoc(doc(db, "settings/general"), {
+        brandName: settings.siteName || currentGen.brandName || "KAIVO",
+        email: currentGen.email || "thekaivoofficial@gmail.com",
+        whatsapp: settings.whatsappNumber || currentGen.whatsapp || "9182896163"
+      });
+    } catch (e) {
+      console.warn("Failed to sync settings/general in saveSettings:", e);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, GLOBAL_SETTINGS_PATH);
   }
@@ -167,6 +179,17 @@ export async function saveAbout(about: AboutContent): Promise<void> {
 export async function saveContact(contact: ContactContent): Promise<void> {
   try {
     await setDoc(doc(db, GLOBAL_CONTACT_PATH), contact);
+    try {
+      const genSnap = await getDoc(doc(db, "settings/general"));
+      const currentGen = genSnap.exists() ? genSnap.data() : {};
+      await setDoc(doc(db, "settings/general"), {
+        brandName: currentGen.brandName || "KAIVO",
+        email: contact.email || currentGen.email || "thekaivoofficial@gmail.com",
+        whatsapp: contact.phone || currentGen.whatsapp || "9182896163"
+      });
+    } catch (e) {
+      console.warn("Failed to sync settings/general in saveContact:", e);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, GLOBAL_CONTACT_PATH);
   }
@@ -329,6 +352,23 @@ export async function removeMediaItem(id: string): Promise<void> {
  */
 export async function initializeDatabaseWithFallback(fallback: Database): Promise<Database> {
   try {
+    // 1. Load or initialize settings/general
+    let generalSettings = {
+      brandName: "KAIVO",
+      email: "thekaivoofficial@gmail.com",
+      whatsapp: "9182896163"
+    };
+    try {
+      const genSnap = await getDoc(doc(db, "settings/general"));
+      if (genSnap.exists()) {
+        generalSettings = { ...generalSettings, ...genSnap.data() };
+      } else {
+        await setDoc(doc(db, "settings/general"), generalSettings);
+      }
+    } catch (e) {
+      console.warn("Failed to load or write settings/general:", e);
+    }
+
     // Check settings first
     const settingsSnap = await getDoc(doc(db, GLOBAL_SETTINGS_PATH));
     
@@ -384,11 +424,20 @@ export async function initializeDatabaseWithFallback(fallback: Database): Promis
       const fetchedMedia: MediaItem[] = [];
       mediaSnap.forEach(doc => fetchedMedia.push(doc.data() as MediaItem));
 
+      const finalSettings = settingsDoc.exists() ? settingsDoc.data() as Settings : { ...fallback.settings };
+      finalSettings.siteName = generalSettings.brandName || finalSettings.siteName;
+      finalSettings.logoText = generalSettings.brandName || finalSettings.logoText;
+      finalSettings.whatsappNumber = generalSettings.whatsapp || finalSettings.whatsappNumber;
+
+      const finalContact = contactDoc.exists() ? contactDoc.data() as ContactContent : { ...fallback.contact };
+      finalContact.email = generalSettings.email || finalContact.email;
+      finalContact.phone = generalSettings.whatsapp || finalContact.phone;
+
       return {
-        settings: settingsDoc.exists() ? settingsDoc.data() as Settings : fallback.settings,
+        settings: finalSettings,
         offers: offersDoc.exists() ? offersDoc.data() as OfferBar : fallback.offers,
         about: aboutDoc.exists() ? aboutDoc.data() as AboutContent : fallback.about,
-        contact: contactDoc.exists() ? contactDoc.data() as ContactContent : fallback.contact,
+        contact: finalContact,
         menus: menusDoc.exists() ? (menusDoc.data() as { items: MenuItem[] }).items || [] : fallback.menus,
         seo: seoDoc.exists() ? seoDoc.data() as GlobalSEO : fallback.seo,
         popup: popupDoc.exists() ? popupDoc.data() as PopupSettings : fallback.popup,
@@ -431,10 +480,98 @@ export async function initializeDatabaseWithFallback(fallback: Database): Promis
       } else {
         console.log("Firestore empty. User is not admin, using static fallbackDb.");
       }
-      return fallback;
+      
+      const finalSettings = { ...fallback.settings };
+      finalSettings.siteName = generalSettings.brandName || finalSettings.siteName;
+      finalSettings.logoText = generalSettings.brandName || finalSettings.logoText;
+      finalSettings.whatsappNumber = generalSettings.whatsapp || finalSettings.whatsappNumber;
+
+      const finalContact = { ...fallback.contact };
+      finalContact.email = generalSettings.email || finalContact.email;
+      finalContact.phone = generalSettings.whatsapp || finalContact.phone;
+
+      return {
+        ...fallback,
+        settings: finalSettings,
+        contact: finalContact
+      };
     }
   } catch (error) {
     console.warn("Firestore initialize failed, using offline fallback:", error);
     return fallback;
+  }
+}
+
+/**
+ * Analytics and Click Tracking Helpers
+ */
+export async function trackProductView(productId: string, productName: string): Promise<void> {
+  try {
+    const timestamp = new Date().toISOString();
+    // 1. Add to product_views
+    await addDoc(collection(db, "product_views"), {
+      productId,
+      productName,
+      timestamp
+    });
+    // 2. Add to analytics for general views
+    await addDoc(collection(db, "analytics"), {
+      eventType: "product_view",
+      productId,
+      productName,
+      timestamp
+    });
+  } catch (error) {
+    console.warn("Error tracking product view:", error);
+  }
+}
+
+export async function trackWhatsAppClick(productId: string, productName: string, pageUrl: string): Promise<void> {
+  try {
+    const timestamp = new Date().toISOString();
+    // 1. Add to whatsapp_clicks
+    await addDoc(collection(db, "whatsapp_clicks"), {
+      productId,
+      productName,
+      timestamp,
+      pageUrl,
+      eventType: "whatsapp_click"
+    });
+    // 2. Add to analytics
+    await addDoc(collection(db, "analytics"), {
+      eventType: "whatsapp_click",
+      productId,
+      productName,
+      pageUrl,
+      timestamp
+    });
+  } catch (error) {
+    console.warn("Error tracking whatsapp click:", error);
+  }
+}
+
+export async function trackPageView(pageUrl: string): Promise<void> {
+  try {
+    const timestamp = new Date().toISOString();
+    await addDoc(collection(db, "analytics"), {
+      eventType: "page_view",
+      pageUrl,
+      timestamp
+    });
+  } catch (error) {
+    console.warn("Error tracking page view:", error);
+  }
+}
+
+export async function trackCategoryView(categoryName: string): Promise<void> {
+  try {
+    const timestamp = new Date().toISOString();
+    await addDoc(collection(db, "analytics"), {
+      eventType: "category_view",
+      categoryName,
+      timestamp
+    });
+  } catch (error) {
+    console.warn("Error tracking category view:", error);
   }
 }

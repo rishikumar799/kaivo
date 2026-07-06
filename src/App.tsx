@@ -13,7 +13,6 @@ import Oversized from "./pages/Oversized";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import ProductDetails from "./pages/ProductDetails";
-import Cart from "./pages/Cart";
 
 import DynamicPage from "./pages/DynamicPage";
 
@@ -49,7 +48,7 @@ export default function App() {
             <Route path="about" element={<About />} />
             <Route path="contact" element={<Contact />} />
             <Route path="product/:slug" element={<ProductDetails />} />
-            <Route path="cart" element={<Cart />} />
+            <Route path="cart" element={<Navigate to="/shop" replace />} />
             <Route path="pages/:slug" element={<DynamicPage />} />
           </Route>
 

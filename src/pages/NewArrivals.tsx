@@ -8,10 +8,15 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
 import ProductCard from "../components/ProductCard";
+import { trackPageView } from "../lib/firebaseService";
 import { SlidersHorizontal, RotateCcw, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export default function NewArrivals() {
   const { db } = useShop();
+
+  useEffect(() => {
+    trackPageView("/new-arrivals");
+  }, []);
 
   // Filter States
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);

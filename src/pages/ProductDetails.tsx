@@ -10,21 +10,20 @@ import { useShop } from "../contexts/ShopContext";
 import ProductCard from "../components/ProductCard";
 import { 
   Heart, 
-  ShoppingCart, 
   MessageSquare, 
   ChevronRight, 
-  Sparkles, 
   Ruler, 
   ShieldCheck, 
   RefreshCcw, 
   Truck 
 } from "lucide-react";
 import { Color } from "../types";
+import { trackProductView, trackWhatsAppClick, trackPageView } from "../lib/firebaseService";
 
 export default function ProductDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { db, addToCart } = useShop();
+  const { db } = useShop();
 
   const [activeImage, setActiveImage] = useState<string>("");
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -32,10 +31,18 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState<number>(1);
   const [isWishlisted, setIsWishlisted] = useState<boolean>(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState<boolean>(false);
-  const [showCartSuccess, setShowCartSuccess] = useState<boolean>(false);
+  const [customerName, setCustomerName] = useState<string>("");
 
   // Retrieve product by slug
   const product = db?.products.find((p) => p.slug === slug);
+
+  // Track page view and product view when product loaded
+  useEffect(() => {
+    trackPageView(`/shop/${slug}`);
+    if (product) {
+      trackProductView(product.id, product.name);
+    }
+  }, [slug, product]);
 
   // Set default values when product changes
   useEffect(() => {
@@ -69,35 +76,42 @@ export default function ProductDetails() {
     ? product.price * (1 - product.discount / 100) 
     : product.price;
 
-  const handleAddToCart = () => {
-    if (!selectedColor) return;
-    addToCart(product, quantity, selectedSize, selectedColor);
-    setShowCartSuccess(true);
-    setTimeout(() => setShowCartSuccess(false), 3500);
-  };
-
   // Generate WhatsApp text payload precisely as requested in description
   const generateWhatsAppMessage = () => {
     const formattedPrice = `₹${Math.round(discountPrice)}`;
-    const text = `Hello,
-I would like to order:
+    const totalPrice = `₹${Math.round(discountPrice * quantity)}`;
+    const text = `Hello KAIVO,
+
+I would like to order the following product.
 
 Product:
 ${product.name}
 
+Price:
+${formattedPrice} ${quantity > 1 ? "each" : ""}
+
+Quantity:
+${quantity}
+
+${quantity > 1 ? `Total Price:\n${totalPrice}\n` : ""}
 Size:
 ${selectedSize}
 
 Color:
 ${selectedColor?.name || "Default"}
 
-Price:
-${formattedPrice}
+Product URL:
+${window.location.href}
 
-Please assist.`;
+Customer Name:
+${customerName.trim() || "Not specified"}
+
+Please assist me with this order.
+
+Thank you.`;
 
     const encodedText = encodeURIComponent(text);
-    const cleanNumber = db.settings.whatsappNumber.replace(/[^+\d]/g, ""); // strip space/dashes
+    const cleanNumber = db.settings.whatsappNumber.replace(/\D/g, ""); // strip + and non-digits for wa.me
     return `https://wa.me/${cleanNumber}?text=${encodedText}`;
   };
 
@@ -293,9 +307,26 @@ Please assist.`;
 
           {/* PRIMARY CTAS PANEL */}
           <div className="flex flex-col gap-3.5 mt-auto">
+            {/* Customer Name input */}
+            <div className="mb-2">
+              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase block mb-1.5">
+                YOUR NAME (OPTIONAL)
+              </label>
+              <input
+                type="text"
+                placeholder="Enter your name to assist with the order"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 text-white rounded-sm px-3.5 py-2.5 text-xs font-mono outline-hidden"
+              />
+            </div>
+
             {/* WHATSAPP ACTION - Direct link target blank */}
             <a
               href={generateWhatsAppMessage()}
+              onClick={() => {
+                trackWhatsAppClick(String(product.id), product.name, window.location.href);
+              }}
               target="_blank"
               rel="noreferrer"
               className="w-full bg-[#25d366] hover:bg-[#20ba5a] active:scale-98 text-black font-bold text-xs tracking-widest py-4.5 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 shadow-lg cursor-pointer text-center"
@@ -303,31 +334,7 @@ Please assist.`;
               <MessageSquare className="w-4.5 h-4.5" />
               <span>ORDER ON WHATSAPP</span>
             </a>
-
-            {/* Local Shopping Cart button */}
-            <button
-              onClick={handleAddToCart}
-              className="w-full bg-zinc-900 hover:bg-amber-500 hover:text-black border border-zinc-800 hover:border-amber-500 text-amber-500 font-bold text-xs tracking-widest py-4 uppercase transition-all rounded-sm font-mono flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ShoppingCart className="w-4.5 h-4.5" />
-              <span>ADD TO CART BAG</span>
-            </button>
           </div>
-
-          {/* Success toast inside column */}
-          <AnimatePresence>
-            {showCartSuccess && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-4 p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-xs rounded-sm font-mono flex items-center justify-center gap-2"
-              >
-                <Sparkles className="w-4 h-4 animate-spin" />
-                <span>ADDED! Items added successfully to your Cart.</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* Technical assurances list */}
           <div className="grid grid-cols-3 gap-3 mt-10 pt-8 border-t border-zinc-900 text-center">

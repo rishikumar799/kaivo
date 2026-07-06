@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
+import { trackPageView, trackWhatsAppClick } from "../lib/firebaseService";
 import { 
   ArrowRight, 
   Heart, 
@@ -18,7 +19,8 @@ import {
   RotateCcw, 
   Sparkles,
   Instagram,
-  ShoppingCart
+  ShoppingCart,
+  MessageSquare
 } from "lucide-react";
 
 // Best Sellers exact configuration from the screenshot
@@ -156,6 +158,11 @@ export default function Home() {
   const [wishlistState, setWishlistState] = useState<Record<string, boolean>>({});
   const [cartNotif, setCartNotif] = useState<string | null>(null);
 
+  // Track page view
+  useEffect(() => {
+    trackPageView("/");
+  }, []);
+
   // Auto slide hero highlights
   useEffect(() => {
     const interval = setInterval(() => {
@@ -173,21 +180,29 @@ export default function Home() {
     }));
   };
 
-  const handleQuickAdd = (p: typeof BEST_SELLERS_PRODUCTS[0], e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Find matching real product in DB if possible, otherwise use a placeholder fallback
-    const dbProduct = db?.products.find(item => item.id === p.id || item.slug === p.slug);
-    if (dbProduct) {
-      addToCart(dbProduct, 1, "M", dbProduct.colors[0]);
-    } else if (db && db.products.length > 0) {
-      // Fallback to first product
-      addToCart(db.products[0], 1, "M", db.products[0].colors[0]);
-    }
+  const generateHomeWhatsAppMessage = (productName: string, productPrice: number, productSlug: string) => {
+    if (!db) return "#";
+    const productUrl = `${window.location.origin}/product/${productSlug}`;
+    const text = `Hello KAIVO,
 
-    setCartNotif(`Added ${p.name} to cart successfully!`);
-    setTimeout(() => setCartNotif(null), 3000);
+I would like to order the following product.
+
+Product:
+${productName}
+
+Price:
+₹${productPrice}
+
+Product URL:
+${productUrl}
+
+Please assist me with this order.
+
+Thank you.`;
+
+    const encodedText = encodeURIComponent(text);
+    const cleanNumber = db.settings.whatsappNumber.replace(/\D/g, ""); // strip + and non-digits for wa.me
+    return `https://wa.me/${cleanNumber}?text=${encodedText}`;
   };
 
   // Split layout hero background slides data
@@ -498,15 +513,21 @@ export default function Home() {
                       <Heart className={`w-4 h-4 transition-all ${isFav ? "fill-red-500 text-red-500 scale-110" : ""}`} />
                     </button>
 
-                    {/* Quick Add To Bag Hover Bar */}
+                    {/* Quick WhatsApp Order Hover Bar */}
                     <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-10 flex justify-center">
-                      <button
-                        onClick={(e) => handleQuickAdd(prod, e)}
-                        className="bg-[#C9A063] hover:bg-white text-black font-mono text-[10px] font-black tracking-widest py-3 px-6 rounded-xs uppercase cursor-pointer flex items-center gap-1.5 transition-all"
+                      <a
+                        href={generateHomeWhatsAppMessage(prod.name, prod.price, prod.slug)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trackWhatsAppClick(String(prod.id), prod.name, window.location.origin + `/product/${prod.slug}`);
+                        }}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="bg-[#25d366] hover:bg-white hover:text-black text-black font-mono text-[10px] font-black tracking-widest py-3 px-6 rounded-sm uppercase cursor-pointer flex items-center gap-1.5 transition-all"
                       >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        <span>QUICK ADD</span>
-                      </button>
+                        <MessageSquare className="w-3.5 h-3.5 text-black" />
+                        <span>ORDER NOW</span>
+                      </a>
                     </div>
 
                   </div>

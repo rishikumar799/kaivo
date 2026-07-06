@@ -8,10 +8,15 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useShop } from "../contexts/ShopContext";
 import ProductCard from "../components/ProductCard";
+import { trackPageView } from "../lib/firebaseService";
 import { SlidersHorizontal, RotateCcw, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export default function Oversized() {
   const { db } = useShop();
+
+  useEffect(() => {
+    trackPageView("/oversized");
+  }, []);
 
   // Filter States
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
