@@ -77,8 +77,9 @@ export default function AdminSettings() {
         seoDescription,
         socialLinks: {
           instagram,
-          facebook,
-          twitter
+          facebook: "",
+          twitter: "",
+          youtube: ""
         }
       };
 
@@ -306,29 +307,16 @@ export default function AdminSettings() {
           {/* Social connections */}
           <div className="bg-zinc-950 border border-zinc-900 rounded-sm p-6 flex flex-col gap-4">
             <h3 className="text-xs font-bold tracking-widest font-mono uppercase text-zinc-300 pb-3 border-b border-zinc-900">
-              SOCIALS
+              SOCIAL CONNECTS
             </h3>
-            <div className="flex flex-col gap-2.5 text-xs">
+            <div className="flex flex-col gap-2 text-xs">
+              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Instagram Link</label>
               <input
                 type="url"
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 placeholder="Instagram profile link"
-                className="bg-black border border-zinc-800 px-3 py-2 text-zinc-400 font-mono"
-              />
-              <input
-                type="url"
-                value={facebook}
-                onChange={(e) => setFacebook(e.target.value)}
-                placeholder="Facebook profile link"
-                className="bg-black border border-zinc-800 px-3 py-2 text-zinc-400 font-mono"
-              />
-              <input
-                type="url"
-                value={twitter}
-                onChange={(e) => setTwitter(e.target.value)}
-                placeholder="Twitter profile link"
-                className="bg-black border border-zinc-800 px-3 py-2 text-zinc-400 font-mono"
+                className="bg-black border border-zinc-800 px-3 py-2.5 text-zinc-200 font-mono focus:outline-none focus:border-amber-500 rounded-sm"
               />
             </div>
           </div>

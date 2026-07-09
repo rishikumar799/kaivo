@@ -18,7 +18,8 @@ import {
   ArrowRight,
   Send,
   Navigation,
-  CheckCircle2
+  CheckCircle2,
+  MessageCircle
 } from "lucide-react";
 
 export default function Contact() {
@@ -133,17 +134,23 @@ export default function Contact() {
 
             {/* Social handles */}
             <div className="border-t border-zinc-900 pt-8">
-              <span className="text-zinc-500 font-bold block mb-4 uppercase text-xs tracking-wider">FOLLOW US</span>
+              <span className="text-zinc-500 font-bold block mb-4 uppercase text-xs tracking-wider">CONNECT WITH US</span>
               <div className="flex items-center gap-4 text-zinc-400">
-                <a href={contact.socialLinks.instagram} target="_blank" rel="noreferrer" className="w-10 h-10 border border-zinc-800 hover:border-[#C9A063] hover:text-[#C9A063] flex items-center justify-center rounded-sm transition-all">
-                  <Instagram className="w-4.5 h-4.5" />
-                </a>
-                <a href={contact.socialLinks.facebook} target="_blank" rel="noreferrer" className="w-10 h-10 border border-zinc-800 hover:border-[#C9A063] hover:text-[#C9A063] flex items-center justify-center rounded-sm transition-all">
-                  <Facebook className="w-4.5 h-4.5" />
-                </a>
-                <a href={contact.socialLinks.twitter} target="_blank" rel="noreferrer" className="w-10 h-10 border border-zinc-800 hover:border-[#C9A063] hover:text-[#C9A063] flex items-center justify-center rounded-sm transition-all">
-                  <Twitter className="w-4.5 h-4.5" />
-                </a>
+                {contact.socialLinks.instagram && (
+                  <a href={contact.socialLinks.instagram} target="_blank" rel="noreferrer" className="w-10 h-10 border border-zinc-800 hover:border-[#C9A063] hover:text-[#C9A063] flex items-center justify-center rounded-sm transition-all" aria-label="Instagram">
+                    <Instagram className="w-4.5 h-4.5" />
+                  </a>
+                )}
+                {contact.email && (
+                  <a href={`mailto:${contact.email}`} className="w-10 h-10 border border-zinc-800 hover:border-[#C9A063] hover:text-[#C9A063] flex items-center justify-center rounded-sm transition-all" aria-label="Email">
+                    <Mail className="w-4.5 h-4.5" />
+                  </a>
+                )}
+                {contact.phone && (
+                  <a href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="w-10 h-10 border border-zinc-800 hover:border-[#C9A063] hover:text-[#C9A063] flex items-center justify-center rounded-sm transition-all" aria-label="WhatsApp">
+                    <MessageCircle className="w-4.5 h-4.5" />
+                  </a>
+                )}
               </div>
             </div>
           </div>

@@ -19,7 +19,8 @@ import {
   Sparkles,
   Megaphone,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from "lucide-react";
 import { db as firestoreDb } from "../lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -45,12 +46,16 @@ export default function AdminDashboard() {
 
   // Analytics states
   const [whatsappClicks, setWhatsappClicks] = useState<any[]>([]);
+  const [productViews, setProductViews] = useState<any[]>([]);
   const [timeFilter, setTimeFilter] = useState<"today" | "week" | "month" | "year" | "all">("all");
 
   useEffect(() => {
     // Initial fetch from localStorage so counts are ready immediately
     const initialLocalClicks = JSON.parse(localStorage.getItem("kaivo_local_clicks") || "[]");
     setWhatsappClicks(initialLocalClicks);
+
+    const initialLocalViews = JSON.parse(localStorage.getItem("kaivo_local_views") || "[]");
+    setProductViews(initialLocalViews);
 
     // Set up real-time listener for whatsapp clicks
     const unsubClicks = onSnapshot(
@@ -82,6 +87,36 @@ export default function AdminDashboard() {
       }
     );
 
+    // Set up real-time listener for product views
+    const unsubViews = onSnapshot(
+      collection(firestoreDb, "product_views"),
+      (snapshot) => {
+        const viewsData: any[] = [];
+        snapshot.forEach((doc) => {
+          viewsData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Merge with localStorage views, deduplicating
+        const localViews = JSON.parse(localStorage.getItem("kaivo_local_views") || "[]");
+        const merged = [...viewsData];
+        localViews.forEach((lv: any) => {
+          const exists = viewsData.some(v => 
+            v.productId === lv.productId && 
+            Math.abs(new Date(v.timestamp).getTime() - new Date(lv.timestamp).getTime()) < 3000
+          );
+          if (!exists) {
+            merged.push(lv);
+          }
+        });
+        setProductViews(merged);
+      },
+      (err) => {
+        console.warn("Firestore views subscription bypassed, using local storage:", err);
+        const localViews = JSON.parse(localStorage.getItem("kaivo_local_views") || "[]");
+        setProductViews(localViews);
+      }
+    );
+
     // Watch for other tabs triggers to sync real-time clicks on same machine instantly
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "kaivo_local_clicks") {
@@ -97,6 +132,19 @@ export default function AdminDashboard() {
             return merged;
           });
         } catch (_) {}
+      } else if (e.key === "kaivo_local_views") {
+        try {
+          const updatedViews = JSON.parse(e.newValue || "[]");
+          setProductViews((prev) => {
+            const merged = [...prev];
+            updatedViews.forEach((uv: any) => {
+              if (!merged.some(m => m.id === uv.id || (m.productId === uv.productId && m.timestamp === uv.timestamp))) {
+                merged.push(uv);
+              }
+            });
+            return merged;
+          });
+        } catch (_) {}
       }
     };
 
@@ -105,6 +153,7 @@ export default function AdminDashboard() {
     // Clean up real-time subscriptions and storage listener
     return () => {
       unsubClicks();
+      unsubViews();
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
@@ -144,9 +193,10 @@ export default function AdminDashboard() {
     };
     
     return {
-      clicks: whatsappClicks.filter(filterFn)
+      clicks: whatsappClicks.filter(filterFn),
+      views: productViews.filter(filterFn)
     };
-  }, [whatsappClicks, timeFilter]);
+  }, [whatsappClicks, productViews, timeFilter]);
 
   // Aggregate stats
   const topProducts = useMemo(() => {
@@ -164,8 +214,23 @@ export default function AdminDashboard() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
+    const viewCounts: Record<string, { name: string, count: number }> = {};
+    filteredData.views.forEach(v => {
+      const id = v.productId || "unknown";
+      const name = v.productName || "Unknown Product";
+      if (!viewCounts[id]) {
+        viewCounts[id] = { name, count: 0 };
+      }
+      viewCounts[id].count++;
+    });
+    const sortedViews = Object.entries(viewCounts)
+      .map(([id, val]) => ({ id, name: val.name, count: val.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return {
-      mostClicked: sortedClicks
+      mostClicked: sortedClicks,
+      mostViewed: sortedViews
     };
   }, [filteredData]);
 
@@ -182,14 +247,16 @@ export default function AdminDashboard() {
       const isoDateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
       
       const clicksCount = whatsappClicks.filter(c => c.timestamp && c.timestamp.startsWith(isoDateStr)).length;
+      const viewsCount = productViews.filter(v => v.timestamp && v.timestamp.startsWith(isoDateStr)).length;
       
       result.push({
         name: dateString,
-        "WhatsApp Clicks": clicksCount
+        "WhatsApp Clicks": clicksCount,
+        "Product Views": viewsCount
       });
     }
     return result;
-  }, [whatsappClicks]);
+  }, [whatsappClicks, productViews]);
 
   if (!db) return null;
 
@@ -348,30 +415,46 @@ export default function AdminDashboard() {
         </div>
 
         {/* Analytics Stats Grid */}
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-sm hover:border-zinc-850 transition-all flex flex-col justify-between sm:flex-row sm:items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* WhatsApp order clicks */}
+          <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-sm hover:border-zinc-850 transition-all flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <MessageSquare className="w-4 h-4 text-[#25d366]" />
-                <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Total WhatsApp Clicks (Orders Initiated)</span>
+                <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-bold">Total WhatsApp Orders Initiated</span>
               </div>
               <span className="text-4xl font-mono font-black text-white">{filteredData.clicks.length}</span>
-              <span className="text-[10px] text-zinc-600 block mt-2 font-mono">DIRECT ORDERS INITIATED ON WHATSAPP IN THE SELECTED TIMEFRAME</span>
+              <span className="text-[10px] text-zinc-600 block mt-2 font-mono">DIRECT ORDERS INITIATED VIA WHATSAPP CHAT IN THE SELECTED TIMEFRAME</span>
             </div>
-            
-            <div className="text-right mt-4 sm:mt-0">
-              <span className="text-[10px] font-mono text-zinc-500 block uppercase">Conversion Action</span>
-              <span className="text-xs font-bold text-[#25d366] font-mono block bg-[#25d366]/5 border border-[#25d366]/10 px-3 py-1.5 rounded mt-1 uppercase">100% Client Message Intent</span>
+            <div className="mt-4 pt-3 border-t border-zinc-900/40 flex justify-between items-center">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">Conversion Action</span>
+              <span className="text-[9px] font-bold text-[#25d366] font-mono bg-[#25d366]/5 border border-[#25d366]/10 px-2 py-1 rounded uppercase">100% Client Order Intent</span>
+            </div>
+          </div>
+
+          {/* Product card views */}
+          <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-sm hover:border-zinc-850 transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="w-4 h-4 text-[#C9A063]" />
+                <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase font-bold">Total Product Item Clicks</span>
+              </div>
+              <span className="text-4xl font-mono font-black text-white">{filteredData.views.length}</span>
+              <span className="text-[10px] text-zinc-600 block mt-2 font-mono">PRODUCT VIEW CLICKS LOGGED ACROSS ALL CLIENT BROWSER SESSIONS</span>
+            </div>
+            <div className="mt-4 pt-3 border-t border-zinc-900/40 flex justify-between items-center">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">Engagement Action</span>
+              <span className="text-[9px] font-bold text-[#C9A063] font-mono bg-[#C9A063]/5 border border-[#C9A063]/10 px-2 py-1 rounded uppercase">Interest & Detail Views</span>
             </div>
           </div>
         </div>
 
-        {/* Charts & Trends Grid - Now Single Beautiful Order Trend Chart */}
+        {/* Charts & Trends Grid - Dual Bar Trend Chart */}
         <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
-              <span className="text-xs font-bold tracking-widest font-mono uppercase text-zinc-300 block">7-DAY WHATSAPP ORDER INITIATION TRENDS</span>
-              <span className="text-[10px] text-zinc-500 font-mono">TRACKING DAILY CLICK ENGAGEMENT</span>
+              <span className="text-xs font-bold tracking-widest font-mono uppercase text-zinc-300 block">7-DAY CUSTOMER ENGAGEMENT & CLICK TRENDS</span>
+              <span className="text-[10px] text-zinc-500 font-mono">TRACKING DAILY WHATSAPP AND VIEW CLICK ACTIONS</span>
             </div>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -382,38 +465,76 @@ export default function AdminDashboard() {
                   <Tooltip 
                     contentStyle={{ backgroundColor: "#09090b", borderColor: "#27272a", color: "#fff", fontFamily: "monospace", fontSize: "11px" }}
                   />
-                  <Bar dataKey="WhatsApp Clicks" fill="#25d366" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                  <Bar dataKey="WhatsApp Clicks" fill="#25d366" radius={[2, 2, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="Product Views" fill="#C9A063" radius={[2, 2, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Most Clicked Products Leaderboard */}
-        <div className="grid grid-cols-1 gap-6 mb-8">
+        {/* Leaderboards Grid (Side by side on desktop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Most Clicked (Orders) */}
           <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-sm">
-            <span className="text-xs font-bold tracking-widest font-mono uppercase text-zinc-300 block mb-4 pb-2 border-b border-zinc-900">WHATSAPP ORDER LEADERBOARD (MOST CLICKED PRODUCTS)</span>
+            <span className="text-xs font-bold tracking-widest font-mono uppercase text-zinc-300 block mb-4 pb-2 border-b border-zinc-900 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#25d366]" />
+              <span>ORDER CONVERSION LEADERBOARD</span>
+            </span>
             {topProducts.mostClicked.length === 0 ? (
               <span className="text-xs text-zinc-600 font-mono block py-4">No WhatsApp order clicks logged yet in this time window.</span>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-3">
                 {topProducts.mostClicked.map((item, idx) => {
-                  // Find the product image in our database to make it look incredibly rich and premium
                   const productObj = db.products.find(p => String(p.id) === String(item.id));
                   return (
-                    <div key={item.id} className="flex items-center gap-3.5 p-3 bg-black border border-zinc-900 rounded-sm hover:border-zinc-800 transition-all">
+                    <div key={item.id} className="flex items-center gap-3.5 p-2.5 bg-black border border-zinc-900 rounded-sm hover:border-zinc-850 transition-all">
                       <div className="text-xs font-mono text-zinc-500 w-5 font-black text-center">#{idx + 1}</div>
                       {productObj && productObj.images?.[0] ? (
-                        <div className="w-10 h-12 border border-zinc-900 rounded-xs overflow-hidden shrink-0 bg-zinc-950">
+                        <div className="w-9 h-11 border border-zinc-900 rounded-xs overflow-hidden shrink-0 bg-zinc-950">
                           <img src={productObj.images[0]} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         </div>
                       ) : null}
                       <div className="flex-grow min-w-0">
                         <span className="text-xs font-bold text-white uppercase tracking-wider block truncate">{item.name}</span>
-                        {productObj && <span className="text-[10px] text-zinc-500 uppercase font-mono">{productObj.category}</span>}
+                        {productObj && <span className="text-[9px] text-zinc-500 uppercase font-mono">{productObj.category}</span>}
                       </div>
-                      <span className="text-xs font-mono text-[#25d366] font-bold bg-[#25d366]/5 px-3 py-1 rounded-sm border border-[#25d366]/10 shrink-0">
+                      <span className="text-[10px] font-mono text-[#25d366] font-bold bg-[#25d366]/5 px-2.5 py-1 rounded-sm border border-[#25d366]/10 shrink-0">
                         {item.count} {item.count === 1 ? 'order' : 'orders'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Most Clicked (Views) */}
+          <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-sm">
+            <span className="text-xs font-bold tracking-widest font-mono uppercase text-zinc-300 block mb-4 pb-2 border-b border-zinc-900 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-[#C9A063]" />
+              <span>ITEM VIEW CLICK LEADERBOARD</span>
+            </span>
+            {topProducts.mostViewed.length === 0 ? (
+              <span className="text-xs text-zinc-600 font-mono block py-4">No product item clicks/views logged yet in this time window.</span>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {topProducts.mostViewed.map((item, idx) => {
+                  const productObj = db.products.find(p => String(p.id) === String(item.id));
+                  return (
+                    <div key={item.id} className="flex items-center gap-3.5 p-2.5 bg-black border border-zinc-900 rounded-sm hover:border-zinc-850 transition-all">
+                      <div className="text-xs font-mono text-zinc-500 w-5 font-black text-center">#{idx + 1}</div>
+                      {productObj && productObj.images?.[0] ? (
+                        <div className="w-9 h-11 border border-zinc-900 rounded-xs overflow-hidden shrink-0 bg-zinc-950">
+                          <img src={productObj.images[0]} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        </div>
+                      ) : null}
+                      <div className="flex-grow min-w-0">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider block truncate">{item.name}</span>
+                        {productObj && <span className="text-[9px] text-zinc-500 uppercase font-mono">{productObj.category}</span>}
+                      </div>
+                      <span className="text-[10px] font-mono text-[#C9A063] font-bold bg-[#C9A063]/5 px-2.5 py-1 rounded-sm border border-[#C9A063]/10 shrink-0">
+                        {item.count} {item.count === 1 ? 'click' : 'clicks'}
                       </span>
                     </div>
                   );

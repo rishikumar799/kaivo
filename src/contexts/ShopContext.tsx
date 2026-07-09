@@ -27,6 +27,7 @@ import {
   saveMediaItem,
   removeMediaItem
 } from "../lib/firebaseService";
+import { auth } from "../lib/firebase";
 
 interface ShopContextType {
   db: Database | null;
@@ -83,16 +84,19 @@ const fallbackDb: Database = {
     seoTitle: "KAIVO | Wear Confidence - Premium Streetwear & Oversized Tees",
     seoDescription: "Premium oversized T-Shirts crafted for comfort, style and individuality. Experience the finest fabrics and elegant minimal designs.",
     socialLinks: {
-      instagram: "https://instagram.com/kaivo_official",
-      facebook: "https://facebook.com/kaivoclothing",
-      twitter: "https://twitter.com/kaivo",
-      youtube: "https://youtube.com/kaivo"
+      instagram: "https://www.instagram.com/thekaivo?utm_source=qr&igsh=aGV5YmZhMWx3NWgy",
+      facebook: "",
+      twitter: "",
+      youtube: ""
     },
     footerContent: "© 2026 KAIVO. All Rights Reserved."
   },
   offers: {
     enabled: true,
-    text: "FREE SHIPPING ON ALL ORDERS ABOVE ₹999"
+    text: "FREE SHIPPING ON ALL ORDERS ABOVE ₹999 • DELIVERING ALL OVER INDIA",
+    displayType: "marquee",
+    marqueeRepeat: "infinite",
+    marqueeSpeed: "normal"
   },
   banners: [
     {
@@ -451,14 +455,14 @@ const fallbackDb: Database = {
     "title": "WE'D LOVE TO HEAR FROM YOU",
     "subtitle": "CONTACT US",
     "description": "Have a question, feedback or just want to say hi? We're here for you. Reach out to us anytime.",
-    "address": "KAIVO Clothing Pvt. Ltd.\nHyderabad, Telangana 500081\nIndia",
-    "email": "hello@kaivoclothing.com",
-    "phone": "+91 98765 43210",
+    "address": "KAIVO Clothing\nVuyyuru, Vijayawada\nAndhra Pradesh - 521165",
+    "email": "thekaivoofficial@gmail.com",
+    "phone": "+91 82896 16300",
     "workingHours": "Monday - Saturday\n10:00 AM - 7:00 PM\nSunday - Closed",
     "socialLinks": {
-      "instagram": "https://instagram.com/kaivo_official",
-      "facebook": "https://facebook.com/kaivoclothing",
-      "twitter": "https://twitter.com/kaivo"
+      "instagram": "https://www.instagram.com/thekaivo?utm_source=qr&igsh=aGV5YmZhMWx3NWgy",
+      "facebook": "",
+      "twitter": ""
     }
   },
   "menus": [
@@ -492,6 +496,167 @@ const fallbackDb: Database = {
             "paddingTop": "py-24",
             "paddingBottom": "py-24",
             "alignment": "center"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-privacy-policy",
+      "title": "Privacy Policy",
+      "slug": "privacy-policy",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-pp-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "PRIVACY POLICY",
+          "subtitle": "LEGAL INFORMATION",
+          "description": "At KAIVO, we respect your privacy and are committed to protecting your personal data.\n\n1. INFORMATION WE COLLECT\nWe collect information when you register on our site, place an order, or subscribe to our newsletter. This includes your name, email address, mailing address, phone number, and payment details.\n\n2. HOW WE USE YOUR INFORMATION\nWe use the information we collect to process transactions, send periodic emails about your order status, and improve our customer service.\n\n3. SECURE PAYMENTS\nWe use secure encryption protocols to protect sensitive financial details. Your card information is processed directly by authorized payment gateways and is never stored on our servers.\n\n4. COOKIES\nWe use cookies to help remember and process the items in your shopping cart and understand your preferences for future visits.",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-terms-of-service",
+      "title": "Terms of Service",
+      "slug": "terms-of-service",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-tos-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "TERMS OF SERVICE",
+          "subtitle": "TERMS & CONDITIONS",
+          "description": "Welcome to KAIVO. By accessing our website, you agree to comply with and be bound by the following terms of service.\n\n1. TERMS OF PURCHASE\nBy placing an order on our store, you confirm that you are of legal age and that the billing information provided is complete and accurate.\n\n2. PRICING & PRODUCTS\nAll prices are listed in Indian Rupees (INR) and are inclusive of applicable taxes. We reserve the right to change prices or discontinue products at any time without prior notice.\n\n3. SHIPPING & ORDERS\nOrders are shipped to the address specified during checkout. Standard shipping takes 3-7 business days across India. Free shipping is provided for all orders above ₹999.\n\n4. INTELLECTUAL PROPERTY\nAll visual design assets, clothing designs, trademarks, logos, and graphics displayed on this website are the intellectual property of KAIVO.",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-shipping-policy",
+      "title": "Shipping Policy",
+      "slug": "shipping-policy",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-shp-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "SHIPPING POLICY",
+          "subtitle": "DELIVERY & DISPATCH",
+          "description": "KAIVO delivers confidence all over India with express, reliable courier services.\n\n1. SHIPPING CHARGES\n- We offer FREE SHIPPING on all orders above ₹999.\n- A nominal shipping fee of ₹99 is charged for orders below ₹999.\n\n2. ESTIMATED DELIVERY TIMES\n- Metro cities: 2 to 4 business days.\n- Rest of India: 4 to 7 business days.\n- Dispatch takes place within 24-48 hours of placing your order.\n\n3. TRACKING YOUR ORDER\nOnce dispatched, you will receive a tracking link via email and WhatsApp. You can follow your package live from our dispatch center directly to your doorstep.",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-return-policy",
+      "title": "Return Policy",
+      "slug": "return-policy",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-ret-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "RETURN POLICY",
+          "subtitle": "RETURNS & EXCHANGES",
+          "description": "At KAIVO Clothing, we maintain an exclusive drop model with highly limited streetwear quantities. Because of this high-demand, low-volume release strategy, we operate on a strict NO RETURN and NO EXCHANGE policy on all of our items.\n\n1. ALL SALES ARE FINAL\nOnce an order is successfully placed, processed, or dispatched, it cannot be returned, cancelled, or exchanged for other items, different graphics, or different sizes. We encourage you to carefully consult our Size Guide before completing your checkout.\n\n2. QUALITY ASSURED\nEvery single KAIVO garment undergoes meticulous multi-point quality control checks prior to packaging and dispatch. We guarantee that only flawless, premium-grade heavyweight clothing is delivered to our customer family.\n\n3. DEFECT OR DISCREPANCY EXCEPTIONS\nIn the highly unlikely event that you receive an incorrect product or a genuine manufacturing defect, please contact our support team on WhatsApp or Email within 24 hours of package delivery. Please ensure you provide a continuous, uncut package unboxing video as validation of the issue so we can assist you immediately.",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-size-guide",
+      "title": "Size Guide",
+      "slug": "size-guide",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-sg-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "SIZE GUIDE",
+          "subtitle": "FIND YOUR FIT",
+          "description": "Our oversized t-shirts are designed for a relaxed, boxy street silhouette. We recommend selecting your true size for the intended oversized look, or sizing down if you prefer a standard fit.\n\nOVERSIZED FIT MEASUREMENTS (IN INCHES)\n\n- SMALL (S):\n  Chest: 44\" | Length: 27\" | Sleeve: 9\"\n\n- MEDIUM (M):\n  Chest: 46\" | Length: 28\" | Sleeve: 9.5\"\n\n- LARGE (L):\n  Chest: 48\" | Length: 29\" | Sleeve: 10\"\n\n- X-LARGE (XL):\n  Chest: 50\" | Length: 30\" | Sleeve: 10.5\"\n\n- XX-LARGE (XXL):\n  Chest: 52\" | Length: 31\" | Sleeve: 11\"",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-faqs",
+      "title": "FAQs",
+      "slug": "faqs",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-faq-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "FREQUENTLY ASKED QUESTIONS",
+          "subtitle": "GET ANSWERS",
+          "description": "Have questions about KAIVO? Here are some of our most frequently asked queries.\n\nQ: What are the shipping rates and free shipping threshold?\nA: We offer free shipping on all orders above ₹999. For orders below this amount, a flat rate of ₹99 is charged.\n\nQ: Do you deliver all over India?\nA: Yes! We deliver to over 26,000 pin codes across India with premium courier partners.\n\nQ: What fabric do you use for your Oversized T-Shirts?\nA: We use premium 240 GSM heavy cotton fabric that has been pre-shrunk and bio-washed for ultimate softness and drape.\n\nQ: Can I change my delivery address after placing the order?\nA: Address modifications can be processed if requested via WhatsApp or Email within 2 hours of placing your order.",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
+          }
+        }
+      ]
+    },
+    {
+      "id": "page-track-order",
+      "title": "Track Order",
+      "slug": "track-order",
+      "published": true,
+      "sections": [
+        {
+          "id": "sec-to-text",
+          "type": "text-only",
+          "enabled": true,
+          "title": "TRACK YOUR ORDER",
+          "subtitle": "SHIPMENT STATUS",
+          "description": "Easily track your package and stay updated with delivery estimates.\n\n1. CHECK YOUR WHATSAPP OR EMAIL\nUpon dispatch, our automated system sends an email and a WhatsApp notification containing your direct courier tracking number and partner tracking link (such as Delhivery, BlueDart, or Xpressbees).\n\n2. TRACK VIA COURIER PORTAL\nSimply copy the tracking ID (AWB) from your dispatch confirmation and paste it into our partner courier's website to see current status, transit checkpoints, and expected delivery date.\n\n3. NEED ASSISTANCE?\nIf you haven't received your tracking details or experience delays, contact our team via the email or WhatsApp options in the footer. We'll track it down for you instantly.",
+          "styles": {
+            "bgColor": "#050505",
+            "textColor": "#ffffff",
+            "paddingTop": "py-16",
+            "paddingBottom": "py-16",
+            "alignment": "left"
           }
         }
       ]
@@ -555,6 +720,50 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       try {
         const initialSeed = localDb ? JSON.parse(localDb) : fallbackDb;
         const firestoreDb = await initializeDatabaseWithFallback(initialSeed);
+
+        // Check if the current user is an authenticated admin
+        const isAdmin = auth.currentUser !== null || (typeof window !== 'undefined' && localStorage.getItem("kaivo_admin_auth") === "true");
+
+        // Auto-migrate address if outdated
+        if (firestoreDb && firestoreDb.contact && (!firestoreDb.contact.address || !firestoreDb.contact.address.includes("521165") || !firestoreDb.contact.address.includes("Vijayawada"))) {
+          firestoreDb.contact.address = "KAIVO Clothing\nVuyyuru, Vijayawada\nAndhra Pradesh - 521165";
+          if (isAdmin) {
+            try {
+              await saveContact(firestoreDb.contact);
+            } catch (e) {
+              console.warn("Auto-migration: Failed to save updated contact to Firestore:", e);
+            }
+          }
+        }
+
+        // Auto-migrate announcement text if it doesn't contain delivering all over India
+        if (firestoreDb && firestoreDb.offers && (!firestoreDb.offers.text || !firestoreDb.offers.text.includes("DELIVERING ALL OVER INDIA"))) {
+          firestoreDb.offers.text = "FREE SHIPPING ON ALL ORDERS ABOVE ₹999 • DELIVERING ALL OVER INDIA";
+          if (isAdmin) {
+            try {
+              await saveOffers(firestoreDb.offers);
+            } catch (e) {
+              console.warn("Auto-migration: Failed to save updated offers to Firestore:", e);
+            }
+          }
+        }
+
+        // Auto-migrate missing default pages if any are absent
+        if (firestoreDb) {
+          const existingPageSlugs = firestoreDb.pages ? firestoreDb.pages.map((p: any) => p.slug) : [];
+          const pagesToAdd = fallbackDb.pages.filter(p => p.slug !== 'home' && !existingPageSlugs.includes(p.slug));
+          if (pagesToAdd.length > 0) {
+            firestoreDb.pages = [...(firestoreDb.pages || []), ...pagesToAdd];
+            if (isAdmin) {
+              try {
+                await Promise.all(pagesToAdd.map(page => savePage(page)));
+              } catch (e) {
+                console.warn("Auto-migration: Failed to save missing pages to Firestore:", e);
+              }
+            }
+          }
+        }
+
         setDb(firestoreDb);
         localStorage.setItem("kaivo_db", JSON.stringify(firestoreDb));
       } catch (e) {

@@ -71,7 +71,16 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  
+  const errorMsg = errInfo.error;
+  const isPermissionDenied = errorMsg.toLowerCase().includes("permission") || errorMsg.toLowerCase().includes("insufficient");
+  
+  if (isPermissionDenied) {
+    console.warn('Firestore Permission Log: ', JSON.stringify(errInfo));
+  } else {
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+  }
+  
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -445,7 +454,17 @@ export async function initializeDatabaseWithFallback(fallback: Database): Promis
         categories: fetchedCategories.length > 0 ? fetchedCategories : fallback.categories,
         products: fetchedProducts.length > 0 ? fetchedProducts : fallback.products,
         testimonials: fetchedTestimonials.length > 0 ? fetchedTestimonials : fallback.testimonials,
-        pages: fetchedPages.length > 0 ? fetchedPages : fallback.pages || [],
+        pages: (() => {
+          const mergedPages = [...fetchedPages];
+          if (fallback.pages) {
+            fallback.pages.forEach(fp => {
+              if (!mergedPages.some(mp => mp.slug === fp.slug)) {
+                mergedPages.push(fp);
+              }
+            });
+          }
+          return mergedPages;
+        })(),
         media: fetchedMedia.length > 0 ? fetchedMedia : fallback.media || [],
         instagram: fallback.instagram || []
       };

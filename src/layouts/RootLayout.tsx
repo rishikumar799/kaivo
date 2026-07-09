@@ -21,7 +21,8 @@ import {
   Phone, 
   MapPin, 
   ArrowRight,
-  Sparkles
+  Sparkles,
+  MessageCircle
 } from "lucide-react";
 
 interface RootLayoutProps {
@@ -145,11 +146,36 @@ export default function RootLayout({ children }: RootLayoutProps) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-black border-b border-zinc-900 text-center py-2.5 px-4 relative z-50 text-[10px] sm:text-xs font-mono tracking-[0.25em] text-zinc-300 flex items-center justify-center"
+            className="bg-black border-b border-zinc-900 py-2.5 px-4 relative z-50 text-[10px] sm:text-xs font-mono tracking-[0.25em] text-zinc-300 flex items-center justify-center overflow-hidden"
           >
-            <span>
-              FREE SHIPPING ON ALL ORDERS ABOVE <span className="text-[#C9A063] font-bold">₹999</span>
-            </span>
+            {offers.displayType === "marquee" ? (
+              <div className="w-full overflow-hidden whitespace-nowrap flex items-center">
+                <div 
+                  className="inline-flex gap-12 animate-[marquee_20s_linear]"
+                  style={{
+                    animationDuration: 
+                      offers.marqueeSpeed === "fast" ? "10s" :
+                      offers.marqueeSpeed === "slow" ? "35s" : "20s",
+                    animationIterationCount: 
+                      offers.marqueeRepeat === "1" ? "1" :
+                      offers.marqueeRepeat === "3" ? "3" :
+                      offers.marqueeRepeat === "5" ? "5" : "infinite",
+                    animationFillMode: "forwards"
+                  }}
+                >
+                  <span className="shrink-0 uppercase">{offers.text}</span>
+                  <span className="shrink-0 uppercase" aria-hidden="true">{offers.text}</span>
+                  <span className="shrink-0 uppercase" aria-hidden="true">{offers.text}</span>
+                  <span className="shrink-0 uppercase" aria-hidden="true">{offers.text}</span>
+                  <span className="shrink-0 uppercase" aria-hidden="true">{offers.text}</span>
+                  <span className="shrink-0 uppercase" aria-hidden="true">{offers.text}</span>
+                </div>
+              </div>
+            ) : (
+              <span className="uppercase text-center">
+                {offers.text}
+              </span>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -472,20 +498,23 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
               {/* Socials at bottom of mobile menu */}
               <div className="border-t border-zinc-900 pt-6">
-                <p className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase mb-4">Follow us</p>
-                <div className="flex items-center gap-4 text-zinc-400">
-                  <a href={settings.socialLinks.instagram} target="_blank" rel="noreferrer" className="hover:text-[#C9A063] transition-colors">
-                    <Instagram className="w-5 h-5" />
-                  </a>
-                  <a href={settings.socialLinks.facebook} target="_blank" rel="noreferrer" className="hover:text-[#C9A063] transition-colors">
-                    <Facebook className="w-5 h-5" />
-                  </a>
-                  <a href={settings.socialLinks.twitter} target="_blank" rel="noreferrer" className="hover:text-[#C9A063] transition-colors">
-                    <Twitter className="w-5 h-5" />
-                  </a>
-                  <a href={settings.socialLinks.youtube} target="_blank" rel="noreferrer" className="hover:text-[#C9A063] transition-colors">
-                    <Youtube className="w-5 h-5" />
-                  </a>
+                <p className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase mb-4">CONNECT WITH US</p>
+                <div className="flex items-center gap-5 text-zinc-400">
+                  {settings.socialLinks.instagram && (
+                    <a href={settings.socialLinks.instagram} target="_blank" rel="noreferrer" className="hover:text-[#C9A063] transition-colors" aria-label="Instagram">
+                      <Instagram className="w-5 h-5" />
+                    </a>
+                  )}
+                  {db.contact.email && (
+                    <a href={`mailto:${db.contact.email}`} className="hover:text-[#C9A063] transition-colors" aria-label="Email">
+                      <Mail className="w-5 h-5" />
+                    </a>
+                  )}
+                  {db.contact.phone && (
+                    <a href={`https://wa.me/${db.contact.phone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="hover:text-[#C9A063] transition-colors" aria-label="WhatsApp">
+                      <MessageCircle className="w-5 h-5" />
+                    </a>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -608,49 +637,37 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 Premium oversized T-Shirts crafted for comfort, style and individuality. Elevating streetwear with timeless aesthetics.
               </p>
               <div className="flex items-center gap-3 text-zinc-500 mt-2">
-                <a 
-                  href={settings.socialLinks.instagram} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
-                  aria-label="Instagram"
-                >
-                  <Instagram className="w-4 h-4" />
-                </a>
-                <a 
-                  href={settings.socialLinks.facebook} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
-                  aria-label="Facebook"
-                >
-                  <Facebook className="w-4 h-4" />
-                </a>
-                <a 
-                  href={settings.socialLinks.twitter} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
-                  aria-label="Twitter"
-                >
-                  <Twitter className="w-4 h-4" />
-                </a>
-                <a 
-                  href={settings.socialLinks.youtube} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
-                  aria-label="Youtube"
-                >
-                  <Youtube className="w-4 h-4" />
-                </a>
-                <a 
-                  href={`mailto:${db.contact.email}`}
-                  className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
-                  aria-label="Email"
-                >
-                  <Mail className="w-4 h-4" />
-                </a>
+                {settings.socialLinks.instagram && (
+                  <a 
+                    href={settings.socialLinks.instagram} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                )}
+                {db.contact.email && (
+                  <a 
+                    href={`mailto:${db.contact.email}`}
+                    className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
+                    aria-label="Email"
+                  >
+                    <Mail className="w-4 h-4" />
+                  </a>
+                )}
+                {db.contact.phone && (
+                  <a 
+                    href={`https://wa.me/${db.contact.phone.replace(/[^0-9]/g, "")}`} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center hover:border-[#C9A063] hover:text-[#C9A063] transition-all"
+                    aria-label="WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </a>
+                )}
               </div>
             </div>
 
@@ -675,11 +692,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <div>
               <h4 className="text-white text-xs font-bold uppercase tracking-widest mb-6">CUSTOMER SUPPORT</h4>
               <ul className="flex flex-col gap-3 text-xs tracking-wider">
-                <li><Link to="/shop" className="hover:text-[#C9A063] transition-colors">Shipping Policy</Link></li>
-                <li><Link to="/shop" className="hover:text-[#C9A063] transition-colors">Return Policy</Link></li>
-                <li><Link to="/about" className="hover:text-[#C9A063] transition-colors">Size Guide</Link></li>
-                <li><Link to="/about" className="hover:text-[#C9A063] transition-colors">FAQs</Link></li>
-                <li><Link to="/contact" className="hover:text-[#C9A063] transition-colors">Track Order</Link></li>
+                <li><Link to="/pages/shipping-policy" className="hover:text-[#C9A063] transition-colors">Shipping Policy</Link></li>
+                <li><Link to="/pages/return-policy" className="hover:text-[#C9A063] transition-colors">Return Policy</Link></li>
+                <li><Link to="/pages/size-guide" className="hover:text-[#C9A063] transition-colors">Size Guide</Link></li>
+                <li><Link to="/pages/faqs" className="hover:text-[#C9A063] transition-colors">FAQs</Link></li>
+                <li><Link to="/pages/track-order" className="hover:text-[#C9A063] transition-colors">Track Order</Link></li>
               </ul>
             </div>
 
@@ -714,8 +731,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
               {settings.footerContent}
             </span>
             <div className="flex items-center gap-6 text-xs text-zinc-600 font-mono">
-              <Link to="/about" className="hover:text-[#C9A063] transition-all">Privacy Policy</Link>
-              <Link to="/about" className="hover:text-[#C9A063] transition-all">Terms of Service</Link>
+              <Link to="/pages/privacy-policy" className="hover:text-[#C9A063] transition-all">Privacy Policy</Link>
+              <Link to="/pages/terms-of-service" className="hover:text-[#C9A063] transition-all">Terms of Service</Link>
             </div>
           </div>
 

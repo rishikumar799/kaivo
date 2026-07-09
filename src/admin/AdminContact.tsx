@@ -47,8 +47,8 @@ export default function AdminContact() {
         workingHours,
         socialLinks: {
           instagram,
-          facebook,
-          twitter
+          facebook: "",
+          twitter: ""
         }
       };
 
@@ -202,29 +202,7 @@ export default function AdminContact() {
                 required
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
-                className="bg-black border border-zinc-800 text-xs px-3 py-2 text-white font-mono text-zinc-400"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Facebook URL</label>
-              <input
-                type="url"
-                required
-                value={facebook}
-                onChange={(e) => setFacebook(e.target.value)}
-                className="bg-black border border-zinc-800 text-xs px-3 py-2 text-white font-mono text-zinc-400"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Twitter URL</label>
-              <input
-                type="url"
-                required
-                value={twitter}
-                onChange={(e) => setTwitter(e.target.value)}
-                className="bg-black border border-zinc-800 text-xs px-3 py-2 text-white font-mono text-zinc-400"
+                className="bg-black border border-zinc-800 text-xs px-3.5 py-3 text-white font-mono focus:outline-none focus:border-amber-500 rounded-sm"
               />
             </div>
           </div>

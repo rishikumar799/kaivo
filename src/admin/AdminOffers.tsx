@@ -16,6 +16,9 @@ export default function AdminOffers() {
   // Retrieve initial state values directly from db.offers
   const [text, setText] = useState(db?.offers.text || "");
   const [enabled, setEnabled] = useState(db?.offers.enabled ?? true);
+  const [displayType, setDisplayType] = useState<"static" | "marquee">(db?.offers.displayType || "marquee");
+  const [marqueeRepeat, setMarqueeRepeat] = useState<"infinite" | "1" | "3" | "5">(db?.offers.marqueeRepeat || "infinite");
+  const [marqueeSpeed, setMarqueeSpeed] = useState<"slow" | "normal" | "fast">(db?.offers.marqueeSpeed || "normal");
 
   if (!db) return null;
 
@@ -34,7 +37,10 @@ export default function AdminOffers() {
       const updatedOffers = {
         ...db.offers,
         text,
-        enabled
+        enabled,
+        displayType,
+        marqueeRepeat,
+        marqueeSpeed
       };
 
       await updateOffers(updatedOffers);
@@ -94,7 +100,56 @@ export default function AdminOffers() {
             />
           </div>
 
-          <label className="flex items-center gap-3 text-xs text-zinc-400 hover:text-white cursor-pointer select-none border-t border-zinc-900 pt-5 mt-2">
+          {/* Display Mode (Static vs Marquee) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-zinc-900 pt-5">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Display Mode</label>
+              <select
+                value={displayType}
+                onChange={(e) => setDisplayType(e.target.value as "static" | "marquee")}
+                className="bg-black border border-zinc-800 text-xs px-4 py-3 text-white focus:outline-none focus:border-[#C9A063] rounded-sm appearance-none cursor-pointer"
+              >
+                <option value="static">Static (Still / Centered)</option>
+                <option value="marquee">Marquee (Scrolling / Animated)</option>
+              </select>
+            </div>
+
+            {displayType === "marquee" && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Scroll Speed</label>
+                <select
+                  value={marqueeSpeed}
+                  onChange={(e) => setMarqueeSpeed(e.target.value as "slow" | "normal" | "fast")}
+                  className="bg-black border border-zinc-800 text-xs px-4 py-3 text-white focus:outline-none focus:border-[#C9A063] rounded-sm appearance-none cursor-pointer"
+                >
+                  <option value="slow">Slow (Readable / Elegant)</option>
+                  <option value="normal">Normal (Balanced)</option>
+                  <option value="fast">Fast (Urgent / Eye-Catching)</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {displayType === "marquee" && (
+            <div className="flex flex-col gap-2 border-t border-zinc-900 pt-5">
+              <label className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">Scrolling Repeat Behavior</label>
+              <select
+                value={marqueeRepeat}
+                onChange={(e) => setMarqueeRepeat(e.target.value as "infinite" | "1" | "3" | "5")}
+                className="bg-black border border-zinc-800 text-xs px-4 py-3 text-white focus:outline-none focus:border-[#C9A063] rounded-sm appearance-none cursor-pointer"
+              >
+                <option value="infinite">Repetitive (Loops Continuously / Forever)</option>
+                <option value="1">One Line Going (Passes 1 Time and Stops)</option>
+                <option value="3">Passes 3 Times and Stops</option>
+                <option value="5">Passes 5 Times and Stops</option>
+              </select>
+              <p className="text-[9px] text-zinc-600 font-sans mt-1 leading-normal uppercase tracking-wider font-semibold">
+                Choose "Repetitive" to loop the banner text infinitely, or set a specific number of passes before the animation comes to rest.
+              </p>
+            </div>
+          )}
+
+          <label className="flex items-center gap-3 text-xs text-zinc-400 hover:text-white cursor-pointer select-none border-t border-zinc-900 pt-5">
             <input
               type="checkbox"
               checked={enabled}

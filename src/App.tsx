@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ShopProvider } from "./contexts/ShopContext";
 import RootLayout from "./layouts/RootLayout";
 import Home from "./pages/Home";
@@ -37,7 +37,7 @@ import AdminPopup from "./admin/AdminPopup";
 export default function App() {
   return (
     <ShopProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           {/* FRONT-FACING PUBLIC STREETWEAR CUSTOMER PAGES */}
           <Route path="/" element={<RootLayout />}>
@@ -76,7 +76,7 @@ export default function App() {
           {/* Fallback wildcard to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </ShopProvider>
   );
 }

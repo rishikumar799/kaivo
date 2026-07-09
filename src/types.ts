@@ -50,6 +50,9 @@ export interface Banner {
 export interface OfferBar {
   enabled: boolean;
   text: string;
+  displayType?: "static" | "marquee";
+  marqueeRepeat?: "infinite" | "1" | "3" | "5";
+  marqueeSpeed?: "slow" | "normal" | "fast";
 }
 
 export interface Testimonial {
